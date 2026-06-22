@@ -1,0 +1,793 @@
+local screenGui = script.Parent
+
+local menuText = "🌸 komi's menu"
+
+-- ======================
+-- SERVICES
+-- ======================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+local humanoid = character:WaitForChild("Humanoid")
+
+-- ======================
+-- CUTE COLOR SCHEME
+-- ======================
+local colors = {
+    primary = Color3.fromRGB(255, 182, 193),
+    secondary = Color3.fromRGB(255, 105, 180),
+    accent = Color3.fromRGB(255, 182, 255),
+    dark = Color3.fromRGB(30, 20, 40),
+    success = Color3.fromRGB(144, 238, 144),
+    warning = Color3.fromRGB(255, 215, 0),
+    danger = Color3.fromRGB(255, 100, 100),
+    text = Color3.fromRGB(255, 255, 255)
+}
+
+-- ======================
+-- BACKGROUND IMAGE IDS
+-- ======================
+local backgroundIDs = {
+    "130680455454797",
+    "133884672746542",
+    "134744446284339"
+}
+local currentBackgroundIndex = 1
+
+-- ======================
+-- CREATE OPEN BUTTON
+-- ======================
+local openButton = Instance.new("ImageButton")
+openButton.Name = "OpenButton"
+openButton.Size = UDim2.new(0, 120, 0, 40)
+openButton.Position = UDim2.new(0, 15, 0, 15)
+openButton.BackgroundColor3 = colors.primary
+openButton.BackgroundTransparency = 0.2
+openButton.BorderSizePixel = 0
+openButton.AutoButtonColor = true
+openButton.Parent = screenGui
+openButton.ZIndex = 10
+
+local openLabel = Instance.new("TextLabel")
+openLabel.Name = "Label"
+openLabel.Text = "🌸 Menu"
+openLabel.Size = UDim2.new(1, 0, 1, 0)
+openLabel.BackgroundTransparency = 1
+openLabel.TextColor3 = colors.text
+openLabel.Font = Enum.Font.IndieFlower
+openLabel.TextSize = 18
+openLabel.Parent = openButton
+
+local openCorner = Instance.new("UICorner")
+openCorner.CornerRadius = UDim.new(0, 15)
+openCorner.Parent = openButton
+
+-- ======================
+-- CREATE MENU FRAME
+-- ======================
+local menuFrame = Instance.new("Frame")
+menuFrame.Name = "MenuFrame"
+menuFrame.Size = UDim2.new(0, 340, 0, 580)
+menuFrame.Position = UDim2.new(0.5, -170, 0.5, -290)
+menuFrame.BackgroundColor3 = colors.dark
+menuFrame.BackgroundTransparency = 0.15
+menuFrame.BorderSizePixel = 0
+menuFrame.Visible = false
+menuFrame.Parent = screenGui
+menuFrame.ZIndex = 2
+
+-- ======================
+-- MENU BACKGROUND IMAGE
+-- ======================
+local menuBackground = Instance.new("ImageLabel")
+menuBackground.Name = "MenuBackground"
+menuBackground.Size = UDim2.new(1, 0, 1, 0)
+menuBackground.Position = UDim2.new(0, 0, 0, 0)
+menuBackground.BackgroundTransparency = 1
+menuBackground.Image = "rbxassetid://" .. backgroundIDs[currentBackgroundIndex]
+menuBackground.ScaleType = Enum.ScaleType.Stretch
+menuBackground.ZIndex = 1
+menuBackground.Parent = menuFrame
+
+local menuCorner = Instance.new("UICorner")
+menuCorner.CornerRadius = UDim.new(0, 20)
+menuCorner.Parent = menuBackground
+
+local glow = Instance.new("ImageLabel")
+glow.Size = UDim2.new(1.05, 0, 1.05, 0)
+glow.Position = UDim2.new(-0.025, 0, -0.025, 0)
+glow.BackgroundTransparency = 1
+glow.Image = "rbxassetid://555394665"
+glow.ImageColor3 = colors.primary
+glow.ImageTransparency = 0.7
+glow.ZIndex = 0
+glow.Parent = menuFrame
+
+-- ======================
+-- TITLE BAR
+-- ======================
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 50)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = colors.primary
+titleBar.BackgroundTransparency = 0.3
+titleBar.ZIndex = 2
+titleBar.BorderSizePixel = 0
+titleBar.Parent = menuFrame
+
+local titleBarCorner = Instance.new("UICorner")
+titleBarCorner.CornerRadius = UDim.new(0, 20)
+titleBarCorner.Parent = titleBar
+
+local dragHandle = Instance.new("TextLabel")
+dragHandle.Name = "DragHandle"
+dragHandle.Text = "⠿"
+dragHandle.Size = UDim2.new(0, 30, 1, 0)
+dragHandle.Position = UDim2.new(0, 5, 0, 0)
+dragHandle.BackgroundTransparency = 1
+dragHandle.TextColor3 = colors.text
+dragHandle.Font = Enum.Font.IndieFlower
+dragHandle.TextSize = 24
+dragHandle.ZIndex = 3
+dragHandle.TextXAlignment = Enum.TextXAlignment.Center
+dragHandle.TextYAlignment = Enum.TextYAlignment.Center
+dragHandle.Parent = titleBar
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "TitleLabel"
+titleLabel.Text = "🌸 " .. menuText
+titleLabel.Size = UDim2.new(1, -90, 1, 0)
+titleLabel.Position = UDim2.new(0, 40, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = colors.text
+titleLabel.Font = Enum.Font.IndieFlower
+titleLabel.TextSize = 20
+titleLabel.ZIndex = 3
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
+
+-- ======================
+-- TITLE ANIMATION
+-- ======================
+local function animateTitle()
+    while menuFrame.Visible do
+        TweenService:Create(titleLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            TextSize = 22
+        }):Play()
+        wait(0.3)
+        TweenService:Create(titleLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            TextSize = 20
+        }):Play()
+        wait(1.5)
+    end
+end
+
+menuFrame:GetPropertyChangedSignal("Visible"):Connect(function()
+    if menuFrame.Visible then
+        coroutine.wrap(animateTitle)()
+    end
+end)
+
+-- ======================
+-- DRAG SYSTEM
+-- ======================
+local dragging = false
+local dragStartPos = Vector2.new()
+local dragStartMousePos = Vector2.new()
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStartPos = Vector2.new(menuFrame.Position.X.Scale, menuFrame.Position.Y.Scale)
+        dragStartMousePos = Vector2.new(input.Position.X, input.Position.Y)
+        titleBar.BackgroundTransparency = 0.5
+    end
+end)
+
+titleBar.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        titleBar.BackgroundTransparency = 0.3
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = Vector2.new(input.Position.X - dragStartMousePos.X, input.Position.Y - dragStartMousePos.Y)
+        local newX = dragStartPos.X + (delta.X / screenGui.AbsoluteSize.X)
+        local newY = dragStartPos.Y + (delta.Y / screenGui.AbsoluteSize.Y)
+        newX = math.clamp(newX, 0, 1 - menuFrame.Size.X.Scale)
+        newY = math.clamp(newY, 0, 1 - menuFrame.Size.Y.Scale)
+        menuFrame.Position = UDim2.new(newX, 0, newY, 0)
+    end
+end)
+
+-- ======================
+-- CLOSE BUTTON
+-- ======================
+local closeButton = Instance.new("ImageButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 35, 0, 35)
+closeButton.Position = UDim2.new(1, -45, 0, 8)
+closeButton.BackgroundColor3 = colors.danger
+closeButton.BackgroundTransparency = 0.3
+closeButton.BorderSizePixel = 0
+closeButton.ZIndex = 3
+closeButton.AutoButtonColor = true
+closeButton.Parent = titleBar
+
+local closeLabel = Instance.new("TextLabel")
+closeLabel.Name = "Label"
+closeLabel.Text = "✕"
+closeLabel.Size = UDim2.new(1, 0, 1, 0)
+closeLabel.BackgroundTransparency = 1
+closeLabel.TextColor3 = colors.text
+closeLabel.Font = Enum.Font.IndieFlower
+closeLabel.TextSize = 18
+closeLabel.ZIndex = 4
+closeLabel.Parent = closeButton
+
+local closeBtnCorner = Instance.new("UICorner")
+closeBtnCorner.CornerRadius = UDim.new(0, 10)
+closeBtnCorner.Parent = closeButton
+
+-- ======================
+-- CONTENT AREA
+-- ======================
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, -20, 1, -70)
+contentFrame.Position = UDim2.new(0, 10, 0, 60)
+contentFrame.BackgroundColor3 = colors.dark
+contentFrame.BackgroundTransparency = 0.3
+contentFrame.ZIndex = 2
+contentFrame.BorderSizePixel = 0
+contentFrame.Parent = menuFrame
+
+local contentCorner = Instance.new("UICorner")
+contentCorner.CornerRadius = UDim.new(0, 12)
+contentCorner.Parent = contentFrame
+
+-- ======================
+-- SCROLLING CONTAINER
+-- ======================
+local scrollingFrame = Instance.new("ScrollingFrame")
+scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
+scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
+scrollingFrame.BackgroundTransparency = 1
+scrollingFrame.ZIndex = 3
+scrollingFrame.Parent = contentFrame
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 800)
+scrollingFrame.ScrollBarThickness = 4
+scrollingFrame.ScrollBarImageColor3 = colors.primary
+scrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
+
+local canvas = Instance.new("Frame")
+canvas.Size = UDim2.new(1, 0, 0, 780)
+canvas.Position = UDim2.new(0, 0, 0, 0)
+canvas.BackgroundTransparency = 1
+canvas.Parent = scrollingFrame
+
+-- ======================
+-- HELPER FUNCTIONS
+-- ======================
+function createCuteButton(parent, text, position, color, size)
+    local button = Instance.new("TextButton")
+    button.Size = size or UDim2.new(1, -16, 0, 40)
+    button.Position = position
+    button.BackgroundColor3 = color or colors.secondary
+    button.BackgroundTransparency = 0.2
+    button.Text = text
+    button.TextColor3 = colors.text
+    button.Font = Enum.Font.IndieFlower
+    button.TextSize = 16
+    button.ZIndex = 3
+    button.Parent = parent
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = button
+    
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.4,
+            Size = size and UDim2.new(size.X.Scale + 0.02, size.X.Offset, size.Y.Scale + 0.02, size.Y.Offset) or UDim2.new(1, -12, 0, 44)
+        }):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {
+            BackgroundTransparency = 0.2,
+            Size = size or UDim2.new(1, -16, 0, 40)
+        }):Play()
+    end)
+    
+    return button
+end
+
+function createNotification(text, isError)
+    local notif = Instance.new("TextLabel")
+    notif.Size = UDim2.new(0, 250, 0, 40)
+    notif.Position = UDim2.new(0.5, -125, 0, 20)
+    notif.BackgroundColor3 = isError and colors.danger or colors.success
+    notif.BackgroundTransparency = 0.2
+    notif.Text = "🌸 " .. text
+    notif.TextColor3 = colors.text
+    notif.Font = Enum.Font.IndieFlower
+    notif.TextSize = 16
+    notif.ZIndex = 10
+    notif.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = notif
+    
+    notif.Position = UDim2.new(0.5, -125, 0, -40)
+    TweenService:Create(notif, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {
+        Position = UDim2.new(0.5, -125, 0, 30)
+    }):Play()
+    game:GetService("Debris"):AddItem(notif, 2.5)
+end
+
+-- ======================
+-- NOCLIP SYSTEM
+-- ======================
+local noclipActive = false
+local noclipConnection
+
+local function toggleNoclip()
+    noclipActive = not noclipActive
+    
+    if noclipActive then
+        if noclipConnection then noclipConnection:Disconnect() end
+        noclipConnection = RunService.RenderStepped:Connect(function()
+            local char = player.Character
+            if char then
+                for _, part in pairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end)
+        createNotification("✨ Noclip Enabled!")
+    else
+        if noclipConnection then
+            noclipConnection:Disconnect()
+            noclipConnection = nil
+        end
+        local char = player.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = true
+                end
+            end
+        end
+        createNotification("🚫 Noclip Disabled!")
+    end
+end
+
+-- ======================
+-- INVISIBLE SYSTEM
+-- ======================
+local invisibleActive = false
+
+local function toggleInvisible()
+    invisibleActive = not invisibleActive
+    
+    local char = player.Character
+    if char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.Transparency = invisibleActive and 1 or 0
+            end
+        end
+        if invisibleActive then
+            createNotification("👻 Invisible Mode ON!")
+        else
+            createNotification("👀 Invisible Mode OFF!")
+        end
+    end
+end
+
+-- ======================
+-- FLY SYSTEM
+-- ======================
+local isFlying = false
+local flySpeed = 50
+local bodyGyro, bodyVelocity
+local flyConnection
+
+local function startFlying()
+    if isFlying then return end
+    isFlying = true
+
+    humanoid.PlatformStand = true
+
+    bodyGyro = Instance.new("BodyGyro")
+    bodyGyro.CFrame = humanoidRootPart.CFrame
+    bodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
+    bodyGyro.P = 100000
+    bodyGyro.Parent = humanoidRootPart
+
+    bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.Parent = humanoidRootPart
+
+    flyConnection = RunService.RenderStepped:Connect(function()
+        if not isFlying or not humanoidRootPart then return end
+
+        local moveDirection = Vector3.zero
+        local camera = workspace.CurrentCamera
+
+        if camera then
+            local cameraCFrame = camera.CFrame
+
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                moveDirection += cameraCFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                moveDirection -= cameraCFrame.LookVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                moveDirection -= cameraCFrame.RightVector
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                moveDirection += cameraCFrame.RightVector
+            end
+
+            bodyGyro.CFrame = CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position + cameraCFrame.LookVector)
+        end
+
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDirection += Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveDirection -= Vector3.new(0, 1, 0)
+        end
+
+        if moveDirection.Magnitude > 0 then
+            bodyVelocity.Velocity = moveDirection.Unit * flySpeed
+        else
+            bodyVelocity.Velocity = Vector3.zero
+        end
+    end)
+end
+
+local function stopFlying()
+    if not isFlying then return end
+    isFlying = false
+
+    if bodyGyro then bodyGyro:Destroy() end
+    if bodyVelocity then bodyVelocity:Destroy() end
+    if flyConnection then flyConnection:Disconnect() end
+
+    humanoid.PlatformStand = false
+end
+
+-- ======================
+-- WAYPOINT SYSTEM
+-- ======================
+local waypoints = {}
+local currentWaypoint = 1
+local flowActive = false
+local flowConnection
+
+local function teleportToWaypoint(index)
+    if not waypoints[index] then 
+        createNotification("⚠️ Waypoint " .. index .. " doesn't exist!", true)
+        return 
+    end
+    local pos = waypoints[index].position
+    local char = player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        char:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+        createNotification("✨ Teleported to WP " .. index)
+    end
+end
+
+-- ======================
+-- CHANGE BACKGROUND
+-- ======================
+local function changeBackground(index)
+    currentBackgroundIndex = index
+    menuBackground.Image = "rbxassetid://" .. backgroundIDs[index]
+    createNotification("🎨 Background " .. index .. " selected!")
+end
+
+-- ======================
+-- CREATE BUTTONS
+-- ======================
+local yPos = 0
+
+-- Fly Button
+local flyButton = createCuteButton(canvas, "✈️ Fly Mode", UDim2.new(0, 8, 0, yPos), colors.primary)
+flyButton.MouseButton1Click:Connect(function()
+    if not isFlying then
+        startFlying()
+        flyButton.Text = "🛑 Stop Flying"
+        flyButton.BackgroundColor3 = colors.danger
+    else
+        stopFlying()
+        flyButton.Text = "✈️ Fly Mode"
+        flyButton.BackgroundColor3 = colors.primary
+    end
+end)
+yPos = yPos + 50
+
+-- Noclip Button
+local noclipButton = createCuteButton(canvas, "🌀 Noclip: OFF", UDim2.new(0, 8, 0, yPos), colors.accent)
+noclipButton.MouseButton1Click:Connect(function()
+    toggleNoclip()
+    noclipButton.Text = noclipActive and "🌀 Noclip: ON" or "🌀 Noclip: OFF"
+    noclipButton.BackgroundColor3 = noclipActive and colors.success or colors.accent
+end)
+yPos = yPos + 50
+
+-- Invisible Button
+local invisibleButton = createCuteButton(canvas, "👻 Invisible: OFF", UDim2.new(0, 8, 0, yPos), colors.secondary)
+invisibleButton.MouseButton1Click:Connect(function()
+    toggleInvisible()
+    invisibleButton.Text = invisibleActive and "👻 Invisible: ON" or "👻 Invisible: OFF"
+    invisibleButton.BackgroundColor3 = invisibleActive and colors.success or colors.secondary
+end)
+yPos = yPos + 50
+
+-- Speed Button
+local speedButton = createCuteButton(canvas, "⚡ Speed: 16", UDim2.new(0, 8, 0, yPos), colors.success)
+speedButton.MouseButton1Click:Connect(function()
+    if humanoid.WalkSpeed == 16 then
+        humanoid.WalkSpeed = 50
+        speedButton.Text = "⚡ Speed: 50"
+        speedButton.BackgroundColor3 = colors.warning
+    elseif humanoid.WalkSpeed == 50 then
+        humanoid.WalkSpeed = 100
+        speedButton.Text = "⚡ Speed: 100"
+        speedButton.BackgroundColor3 = colors.danger
+    else
+        humanoid.WalkSpeed = 16
+        speedButton.Text = "⚡ Speed: 16"
+        speedButton.BackgroundColor3 = colors.success
+    end
+end)
+yPos = yPos + 50
+
+-- Background Label
+local bgLabel = Instance.new("TextLabel")
+bgLabel.Size = UDim2.new(1, -16, 0, 25)
+bgLabel.Position = UDim2.new(0, 8, 0, yPos)
+bgLabel.BackgroundTransparency = 1
+bgLabel.Text = "🎨 Choose Background:"
+bgLabel.TextColor3 = colors.text
+bgLabel.Font = Enum.Font.IndieFlower
+bgLabel.TextSize = 14
+bgLabel.ZIndex = 3
+bgLabel.TextXAlignment = Enum.TextXAlignment.Center
+bgLabel.Parent = canvas
+yPos = yPos + 30
+
+-- Background Buttons
+local bgButton1 = createCuteButton(canvas, "🌸 BG 1", UDim2.new(0, 8, 0, yPos), colors.primary, UDim2.new(0.3, -4, 0, 40))
+bgButton1.MouseButton1Click:Connect(function()
+    changeBackground(1)
+    bgButton1.BackgroundColor3 = colors.success
+    bgButton2.BackgroundColor3 = colors.primary
+    bgButton3.BackgroundColor3 = colors.primary
+end)
+yPos = yPos + 45
+
+local bgButton2 = createCuteButton(canvas, "🌺 BG 2", UDim2.new(0, 8, 0, yPos-45), colors.secondary, UDim2.new(0.3, -4, 0, 40))
+bgButton2.Position = UDim2.new(0.35, 8, 0, yPos-45)
+bgButton2.MouseButton1Click:Connect(function()
+    changeBackground(2)
+    bgButton1.BackgroundColor3 = colors.primary
+    bgButton2.BackgroundColor3 = colors.success
+    bgButton3.BackgroundColor3 = colors.primary
+end)
+
+local bgButton3 = createCuteButton(canvas, "🌿 BG 3", UDim2.new(0, 8, 0, yPos-45), colors.accent, UDim2.new(0.3, -4, 0, 40))
+bgButton3.Position = UDim2.new(0.68, 8, 0, yPos-45)
+bgButton3.MouseButton1Click:Connect(function()
+    changeBackground(3)
+    bgButton1.BackgroundColor3 = colors.primary
+    bgButton2.BackgroundColor3 = colors.primary
+    bgButton3.BackgroundColor3 = colors.success
+end)
+yPos = yPos + 10
+
+-- Waypoint Section Label
+local wpLabel = Instance.new("TextLabel")
+wpLabel.Size = UDim2.new(1, -16, 0, 25)
+wpLabel.Position = UDim2.new(0, 8, 0, yPos)
+wpLabel.BackgroundTransparency = 1
+wpLabel.Text = "📍 Waypoints:"
+wpLabel.TextColor3 = colors.text
+wpLabel.Font = Enum.Font.IndieFlower
+wpLabel.TextSize = 14
+wpLabel.ZIndex = 3
+wpLabel.TextXAlignment = Enum.TextXAlignment.Center
+wpLabel.Parent = canvas
+yPos = yPos + 30
+
+-- Add Waypoint
+local addWPButton = createCuteButton(canvas, "📍 Add Waypoint", UDim2.new(0, 8, 0, yPos), colors.accent)
+addWPButton.MouseButton1Click:Connect(function()
+    local pos = humanoidRootPart.Position
+    table.insert(waypoints, {position = pos})
+    createNotification("📍 Waypoint " .. #waypoints .. " added!")
+end)
+yPos = yPos + 50
+
+-- Clear Waypoints
+local clearWPButton = createCuteButton(canvas, "🗑️ Clear Waypoints", UDim2.new(0, 8, 0, yPos), colors.danger)
+clearWPButton.MouseButton1Click:Connect(function()
+    if flowActive then
+        flowActive = false
+        if flowConnection then flowConnection:Disconnect() end
+        flowButton.Text = "🔄 Flow: OFF"
+        flowButton.BackgroundColor3 = colors.accent
+    end
+    waypoints = {}
+    currentWaypoint = 1
+    createNotification("🗑️ Waypoints cleared!")
+end)
+yPos = yPos + 50
+
+-- TP Buttons
+for i = 1, 5 do
+    local tpButton = Instance.new("TextButton")
+    tpButton.Size = UDim2.new(0.18, -4, 0, 30)
+    tpButton.Position = UDim2.new(0.02 + (i-1) * 0.2, 8, 0, yPos)
+    tpButton.BackgroundColor3 = colors.primary
+    tpButton.BackgroundTransparency = 0.2
+    tpButton.Text = "🌸 " .. i
+    tpButton.TextColor3 = colors.text
+    tpButton.Font = Enum.Font.IndieFlower
+    tpButton.TextSize = 14
+    tpButton.ZIndex = 3
+    tpButton.Parent = canvas
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = tpButton
+
+    tpButton.MouseButton1Click:Connect(function()
+        teleportToWaypoint(i)
+    end)
+end
+yPos = yPos + 40
+
+-- Flow Button
+local flowButton = createCuteButton(canvas, "🔄 Flow: OFF", UDim2.new(0, 8, 0, yPos), colors.accent)
+flowButton.MouseButton1Click:Connect(function()
+    if flowActive then
+        flowActive = false
+        if flowConnection then flowConnection:Disconnect() end
+        flowButton.Text = "🔄 Flow: OFF"
+        flowButton.BackgroundColor3 = colors.accent
+        createNotification("🔄 Flow stopped")
+    else
+        if #waypoints < 2 then
+            createNotification("⚠️ Need at least 2 waypoints!", true)
+            return
+        end
+        flowActive = true
+        currentWaypoint = 1
+        flowButton.Text = "🔄 Flow: ON"
+        flowButton.BackgroundColor3 = colors.success
+        createNotification("🔄 Flowing through waypoints...")
+
+        flowConnection = RunService.RenderStepped:Connect(function()
+            if not flowActive then
+                if flowConnection then flowConnection:Disconnect() end
+                return
+            end
+
+            local char = player.Character
+            if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            local currentPos = hrp.Position
+            local targetPos = waypoints[currentWaypoint].position
+            local distance = (targetPos - currentPos).Magnitude
+
+            if distance < 5 then
+                currentWaypoint = currentWaypoint + 1
+                if currentWaypoint > #waypoints then
+                    currentWaypoint = 1
+                end
+            else
+                local direction = (targetPos - currentPos).Unit
+                local newPos = currentPos + direction * 3
+                hrp.CFrame = CFrame.new(newPos)
+
+                if isFlying and bodyVelocity then
+                    bodyVelocity.Velocity = direction * flySpeed
+                end
+            end
+        end)
+    end
+end)
+yPos = yPos + 50
+
+-- ======================
+-- CHARACTER RESPAWN HANDLER
+-- ======================
+player.CharacterAdded:Connect(function(newCharacter)
+    if isFlying then
+        stopFlying()
+        flyButton.Text = "✈️ Fly Mode"
+        flyButton.BackgroundColor3 = colors.primary
+    end
+    if flowActive then
+        flowActive = false
+        if flowConnection then flowConnection:Disconnect() end
+        flowButton.Text = "🔄 Flow: OFF"
+        flowButton.BackgroundColor3 = colors.accent
+    end
+    if noclipActive then
+        noclipActive = false
+        if noclipConnection then noclipConnection:Disconnect() end
+        noclipButton.Text = "🌀 Noclip: OFF"
+        noclipButton.BackgroundColor3 = colors.accent
+    end
+    if invisibleActive then
+        invisibleActive = false
+        invisibleButton.Text = "👻 Invisible: OFF"
+        invisibleButton.BackgroundColor3 = colors.secondary
+    end
+    character = newCharacter
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    humanoid = character:WaitForChild("Humanoid")
+    speedButton.Text = "⚡ Speed: 16"
+    speedButton.BackgroundColor3 = colors.success
+end)
+
+-- ======================
+-- OPEN / CLOSE LOGIC
+-- ======================
+local menuOpen = false
+
+openButton.MouseButton1Click:Connect(function()
+    menuFrame.Visible = true
+    menuFrame.Position = UDim2.new(0.5, -170, 0.5, -330)
+    TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {
+        Position = UDim2.new(0.5, -170, 0.5, -290),
+        BackgroundTransparency = 0.15
+    }):Play()
+    openButton.Visible = false
+    menuOpen = true
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    TweenService:Create(menuFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+        Position = UDim2.new(0.5, -170, 0.5, -330),
+        BackgroundTransparency = 0.15
+    }):Play()
+    wait(0.3)
+    menuFrame.Visible = false
+    menuFrame.Position = UDim2.new(0.5, -170, 0.5, -290)
+    openButton.Visible = true
+    menuOpen = false
+end)
+
+-- ======================
+-- KEYBIND TO TOGGLE MENU
+-- ======================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift or input.KeyCode == Enum.KeyCode.LeftShift then
+        if menuOpen then
+            closeButton.MouseButton1Click:Fire()
+        else
+            openButton.MouseButton1Click:Fire()
+        end
+    end
+end)
