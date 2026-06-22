@@ -581,10 +581,9 @@ bgButton1.MouseButton1Click:Connect(function()
     bgButton2.BackgroundColor3 = colors.primary
     bgButton3.BackgroundColor3 = colors.primary
 end)
-yPos = yPos + 45
 
-local bgButton2 = createCuteButton(canvas, "🌺 BG 2", UDim2.new(0, 8, 0, yPos-45), colors.secondary, UDim2.new(0.3, -4, 0, 40))
-bgButton2.Position = UDim2.new(0.35, 8, 0, yPos-45)
+local bgButton2 = createCuteButton(canvas, "🌺 BG 2", UDim2.new(0, 8, 0, yPos), colors.secondary, UDim2.new(0.3, -4, 0, 40))
+bgButton2.Position = UDim2.new(0.35, 8, 0, yPos)
 bgButton2.MouseButton1Click:Connect(function()
     changeBackground(2)
     bgButton1.BackgroundColor3 = colors.primary
@@ -592,15 +591,15 @@ bgButton2.MouseButton1Click:Connect(function()
     bgButton3.BackgroundColor3 = colors.primary
 end)
 
-local bgButton3 = createCuteButton(canvas, "🌿 BG 3", UDim2.new(0, 8, 0, yPos-45), colors.accent, UDim2.new(0.3, -4, 0, 40))
-bgButton3.Position = UDim2.new(0.68, 8, 0, yPos-45)
+local bgButton3 = createCuteButton(canvas, "🌿 BG 3", UDim2.new(0, 8, 0, yPos), colors.accent, UDim2.new(0.3, -4, 0, 40))
+bgButton3.Position = UDim2.new(0.68, 8, 0, yPos)
 bgButton3.MouseButton1Click:Connect(function()
     changeBackground(3)
     bgButton1.BackgroundColor3 = colors.primary
     bgButton2.BackgroundColor3 = colors.primary
     bgButton3.BackgroundColor3 = colors.success
 end)
-yPos = yPos + 10
+yPos = yPos + 50
 
 -- Waypoint Section Label
 local wpLabel = Instance.new("TextLabel")
@@ -771,7 +770,7 @@ closeButton.MouseButton1Click:Connect(function()
         Position = UDim2.new(0.5, -170, 0.5, -330),
         BackgroundTransparency = 0.15
     }):Play()
-    wait(0.3)
+    task.wait(0.3)
     menuFrame.Visible = false
     menuFrame.Position = UDim2.new(0.5, -170, 0.5, -290)
     openButton.Visible = true
@@ -791,3 +790,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         end
     end
 end)
+
+-- Force the script to load by printing a silent message
+print("")
