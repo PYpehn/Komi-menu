@@ -1,4 +1,16 @@
-local screenGui = script.Parent
+-- ======================
+-- STARTERPLAYERSCRIPTS VERSION
+-- ======================
+
+-- Wait for player to load
+local player = game:GetService("Players").LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "KomiMenu"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
 
 local menuText = "🌸 komi's menu"
 
@@ -10,7 +22,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
-local player = Players.LocalPlayer
+-- Wait for character
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
 local humanoid = character:WaitForChild("Humanoid")
@@ -30,12 +42,14 @@ local colors = {
 }
 
 -- ======================
--- BACKGROUND IMAGE IDS
+-- BACKGROUND IMAGE IDS (5 BACKGROUNDS NOW)
 -- ======================
 local backgroundIDs = {
-    "130680455454797",
-    "133884672746542",
-    "134744446284339"
+    "130680455454797",   -- BG 1 (default)
+    "133884672746542",   -- BG 2
+    "134744446284339",   -- BG 3
+    "118649265858776",   -- BG 4 (NEW)
+    "72109211503224"     -- BG 5 (NEW)
 }
 local currentBackgroundIndex = 1
 
@@ -73,14 +87,14 @@ openCorner.CornerRadius = UDim.new(0, 15)
 openCorner.Parent = openButton
 
 -- ======================
--- CREATE MENU FRAME (BIGGER FOR MOBILE)
+-- CREATE MENU FRAME
 -- ======================
 local menuFrame = Instance.new("Frame")
 menuFrame.Name = "MenuFrame"
-menuFrame.Size = isMobile and UDim2.new(0, 380, 0, 600) or UDim2.new(0, 340, 0, 580)
-menuFrame.Position = UDim2.new(0.5, -(isMobile and 190 or 170), 0.5, -(isMobile and 300 or 290))
+menuFrame.Size = isMobile and UDim2.new(0, 400, 0, 620) or UDim2.new(0, 360, 0, 600)
+menuFrame.Position = UDim2.new(0.5, -(isMobile and 200 or 180), 0.5, -(isMobile and 310 or 300))
 menuFrame.BackgroundColor3 = colors.dark
-menuFrame.BackgroundTransparency = 0.15
+menuFrame.BackgroundTransparency = 0.5
 menuFrame.BorderSizePixel = 0
 menuFrame.Visible = false
 menuFrame.Parent = screenGui
@@ -93,6 +107,7 @@ local menuBackground = Instance.new("ImageLabel")
 menuBackground.Name = "MenuBackground"
 menuBackground.Size = UDim2.new(1, 0, 1, 0)
 menuBackground.Position = UDim2.new(0, 0, 0, 0)
+menuBackground.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 menuBackground.BackgroundTransparency = 1
 menuBackground.Image = "rbxassetid://" .. backgroundIDs[currentBackgroundIndex]
 menuBackground.ScaleType = Enum.ScaleType.Stretch
@@ -103,25 +118,15 @@ local menuCorner = Instance.new("UICorner")
 menuCorner.CornerRadius = UDim.new(0, 20)
 menuCorner.Parent = menuBackground
 
-local glow = Instance.new("ImageLabel")
-glow.Size = UDim2.new(1.05, 0, 1.05, 0)
-glow.Position = UDim2.new(-0.025, 0, -0.025, 0)
-glow.BackgroundTransparency = 1
-glow.Image = "rbxassetid://555394665"
-glow.ImageColor3 = colors.primary
-glow.ImageTransparency = 0.7
-glow.ZIndex = 0
-glow.Parent = menuFrame
-
 -- ======================
--- TITLE BAR (BIGGER FOR MOBILE)
+-- TITLE BAR
 -- ======================
 local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
 titleBar.Size = UDim2.new(1, 0, 0, isMobile and 60 or 50)
 titleBar.Position = UDim2.new(0, 0, 0, 0)
 titleBar.BackgroundColor3 = colors.primary
-titleBar.BackgroundTransparency = 0.3
+titleBar.BackgroundTransparency = 0.1
 titleBar.ZIndex = 2
 titleBar.BorderSizePixel = 0
 titleBar.Parent = menuFrame
@@ -180,7 +185,7 @@ menuFrame:GetPropertyChangedSignal("Visible"):Connect(function()
 end)
 
 -- ======================
--- DRAG SYSTEM (MOBILE SUPPORT)
+-- DRAG SYSTEM
 -- ======================
 local dragging = false
 local dragStartPos = Vector2.new()
@@ -191,14 +196,14 @@ titleBar.InputBegan:Connect(function(input)
         dragging = true
         dragStartPos = Vector2.new(menuFrame.Position.X.Scale, menuFrame.Position.Y.Scale)
         dragStartMousePos = Vector2.new(input.Position.X, input.Position.Y)
-        titleBar.BackgroundTransparency = 0.5
+        titleBar.BackgroundTransparency = 0.3
     end
 end)
 
 titleBar.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = false
-        titleBar.BackgroundTransparency = 0.3
+        titleBar.BackgroundTransparency = 0.1
     end
 end)
 
@@ -214,14 +219,14 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- ======================
--- CLOSE BUTTON (BIGGER FOR MOBILE)
+-- CLOSE BUTTON
 -- ======================
 local closeButton = Instance.new("ImageButton")
 closeButton.Name = "CloseButton"
 closeButton.Size = isMobile and UDim2.new(0, 45, 0, 45) or UDim2.new(0, 35, 0, 35)
 closeButton.Position = UDim2.new(1, -(isMobile and 55 or 45), 0, isMobile and 8 or 8)
 closeButton.BackgroundColor3 = colors.danger
-closeButton.BackgroundTransparency = 0.3
+closeButton.BackgroundTransparency = 0.1
 closeButton.BorderSizePixel = 0
 closeButton.ZIndex = 3
 closeButton.AutoButtonColor = true
@@ -243,14 +248,14 @@ closeBtnCorner.CornerRadius = UDim.new(0, 10)
 closeBtnCorner.Parent = closeButton
 
 -- ======================
--- CONTENT AREA
+-- CONTENT AREA (MORE TRANSPARENT)
 -- ======================
 local contentFrame = Instance.new("Frame")
 contentFrame.Name = "ContentFrame"
 contentFrame.Size = UDim2.new(1, -20, 1, -(isMobile and 80 or 70))
 contentFrame.Position = UDim2.new(0, 10, 0, isMobile and 70 or 60)
 contentFrame.BackgroundColor3 = colors.dark
-contentFrame.BackgroundTransparency = 0.3
+contentFrame.BackgroundTransparency = 0.6
 contentFrame.ZIndex = 2
 contentFrame.BorderSizePixel = 0
 contentFrame.Parent = menuFrame
@@ -268,13 +273,13 @@ scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
 scrollingFrame.BackgroundTransparency = 1
 scrollingFrame.ZIndex = 3
 scrollingFrame.Parent = contentFrame
-scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 800)
+scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 850)
 scrollingFrame.ScrollBarThickness = isMobile and 6 or 4
 scrollingFrame.ScrollBarImageColor3 = colors.primary
 scrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
 
 local canvas = Instance.new("Frame")
-canvas.Size = UDim2.new(1, 0, 0, 780)
+canvas.Size = UDim2.new(1, 0, 0, 830)
 canvas.Position = UDim2.new(0, 0, 0, 0)
 canvas.BackgroundTransparency = 1
 canvas.Parent = scrollingFrame
@@ -287,7 +292,7 @@ function createCuteButton(parent, text, position, color, size)
     button.Size = size or UDim2.new(1, -16, 0, isMobile and 50 or 40)
     button.Position = position
     button.BackgroundColor3 = color or colors.secondary
-    button.BackgroundTransparency = 0.2
+    button.BackgroundTransparency = 0.15
     button.Text = text
     button.TextColor3 = colors.text
     button.Font = Enum.Font.IndieFlower
@@ -301,13 +306,13 @@ function createCuteButton(parent, text, position, color, size)
     
     button.MouseEnter:Connect(function()
         TweenService:Create(button, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.4,
+            BackgroundTransparency = 0.35,
             Size = size and UDim2.new(size.X.Scale + 0.02, size.X.Offset, size.Y.Scale + 0.02, size.Y.Offset) or UDim2.new(1, -12, 0, isMobile and 54 or 44)
         }):Play()
     end)
     button.MouseLeave:Connect(function()
         TweenService:Create(button, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.2,
+            BackgroundTransparency = 0.15,
             Size = size or UDim2.new(1, -16, 0, isMobile and 50 or 40)
         }):Play()
     end)
@@ -325,7 +330,7 @@ function createNotification(text, isError)
     notif.Size = UDim2.new(0, isMobile and 300 or 250, 0, isMobile and 50 or 40)
     notif.Position = UDim2.new(0.5, -(isMobile and 150 or 125), 0, 20)
     notif.BackgroundColor3 = isError and colors.danger or colors.success
-    notif.BackgroundTransparency = 0.2
+    notif.BackgroundTransparency = 0.15
     notif.Text = "🌸 " .. text
     notif.TextColor3 = colors.text
     notif.Font = Enum.Font.IndieFlower
@@ -485,8 +490,10 @@ end
 -- ======================
 -- MOBILE FLY CONTROLS
 -- ======================
+local mobileFlyControls
+
 if isMobile then
-    local mobileFlyControls = Instance.new("Frame")
+    mobileFlyControls = Instance.new("Frame")
     mobileFlyControls.Name = "MobileFlyControls"
     mobileFlyControls.Size = UDim2.new(0, 250, 0, 200)
     mobileFlyControls.Position = UDim2.new(0.5, -125, 0.5, 100)
@@ -500,7 +507,7 @@ if isMobile then
         btn.Size = UDim2.new(0, 60, 0, 60)
         btn.Position = position
         btn.BackgroundColor3 = color
-        btn.BackgroundTransparency = 0.3
+        btn.BackgroundTransparency = 0.2
         btn.Text = text
         btn.TextColor3 = colors.text
         btn.Font = Enum.Font.IndieFlower
@@ -519,8 +526,6 @@ if isMobile then
     local downFly = createFlyButton("⬇️", UDim2.new(0.5, -30, 0, 120), colors.danger)
     local leftFly = createFlyButton("⬅️", UDim2.new(0, 10, 0, 60), colors.warning)
     local rightFly = createFlyButton("➡️", UDim2.new(0, 170, 0, 60), colors.warning)
-
-    local flyConnections = {}
 
     local function setupMobileFly(btn, dirFunc)
         local conn
@@ -553,15 +558,6 @@ if isMobile then
         local cam = workspace.CurrentCamera
         return cam and cam.CFrame.RightVector or Vector3.new(1, 0, 0)
     end)
-
-    -- Show/hide mobile fly controls
-    local function showMobileFlyControls()
-        mobileFlyControls.Visible = true
-    end
-
-    local function hideMobileFlyControls()
-        mobileFlyControls.Visible = false
-    end
 end
 
 -- ======================
@@ -661,7 +657,7 @@ yPos = yPos + (isMobile and 60 or 50)
 local bgLabel = Instance.new("TextLabel")
 bgLabel.Size = UDim2.new(1, -16, 0, isMobile and 30 or 25)
 bgLabel.Position = UDim2.new(0, 8, 0, yPos)
-bgLabel.BackgroundTransparency = 1
+bgLabel.BackgroundTransparency = 0.3
 bgLabel.Text = "🎨 Choose Background:"
 bgLabel.TextColor3 = colors.text
 bgLabel.Font = Enum.Font.IndieFlower
@@ -671,39 +667,40 @@ bgLabel.TextXAlignment = Enum.TextXAlignment.Center
 bgLabel.Parent = canvas
 yPos = yPos + (isMobile and 35 or 30)
 
--- Background Buttons
-local bgButton1 = createCuteButton(canvas, "🌸 BG 1", UDim2.new(0, 8, 0, yPos), colors.primary, UDim2.new(0.3, -4, 0, isMobile and 50 or 40))
-bgButton1.MouseButton1Click:Connect(function()
-    changeBackground(1)
-    bgButton1.BackgroundColor3 = colors.success
-    bgButton2.BackgroundColor3 = colors.primary
-    bgButton3.BackgroundColor3 = colors.primary
-end)
+-- Background Buttons (5 buttons now)
+local bgButtons = {}
+local bgColors = {
+    Color3.fromRGB(255, 182, 193),  -- Pink
+    Color3.fromRGB(255, 105, 180),  -- Hot Pink
+    Color3.fromRGB(255, 182, 255),  -- Purple
+    Color3.fromRGB(144, 238, 144),  -- Green
+    Color3.fromRGB(255, 215, 0)     -- Gold
+}
+local bgIcons = {"🌸", "🌺", "🌿", "🌟", "✨"}
 
-local bgButton2 = createCuteButton(canvas, "🌺 BG 2", UDim2.new(0, 8, 0, yPos), colors.secondary, UDim2.new(0.3, -4, 0, isMobile and 50 or 40))
-bgButton2.Position = UDim2.new(0.35, 8, 0, yPos)
-bgButton2.MouseButton1Click:Connect(function()
-    changeBackground(2)
-    bgButton1.BackgroundColor3 = colors.primary
-    bgButton2.BackgroundColor3 = colors.success
-    bgButton3.BackgroundColor3 = colors.primary
-end)
-
-local bgButton3 = createCuteButton(canvas, "🌿 BG 3", UDim2.new(0, 8, 0, yPos), colors.accent, UDim2.new(0.3, -4, 0, isMobile and 50 or 40))
-bgButton3.Position = UDim2.new(0.68, 8, 0, yPos)
-bgButton3.MouseButton1Click:Connect(function()
-    changeBackground(3)
-    bgButton1.BackgroundColor3 = colors.primary
-    bgButton2.BackgroundColor3 = colors.primary
-    bgButton3.BackgroundColor3 = colors.success
-end)
+for i = 1, 5 do
+    local btn = createCuteButton(canvas, bgIcons[i] .. " BG " .. i, UDim2.new(0, 8, 0, yPos), bgColors[i], UDim2.new(0.18, -4, 0, isMobile and 50 or 40))
+    btn.Position = UDim2.new(0.02 + (i-1) * 0.2, 8, 0, yPos)
+    
+    btn.MouseButton1Click:Connect(function()
+        changeBackground(i)
+        -- Reset all buttons
+        for j = 1, 5 do
+            bgButtons[j].BackgroundColor3 = bgColors[j]
+        end
+        -- Highlight selected
+        btn.BackgroundColor3 = colors.success
+    end)
+    
+    bgButtons[i] = btn
+end
 yPos = yPos + (isMobile and 55 or 50)
 
 -- Waypoint Section Label
 local wpLabel = Instance.new("TextLabel")
 wpLabel.Size = UDim2.new(1, -16, 0, isMobile and 30 or 25)
 wpLabel.Position = UDim2.new(0, 8, 0, yPos)
-wpLabel.BackgroundTransparency = 1
+wpLabel.BackgroundTransparency = 0.3
 wpLabel.Text = "📍 Waypoints:"
 wpLabel.TextColor3 = colors.text
 wpLabel.Font = Enum.Font.IndieFlower
@@ -743,7 +740,7 @@ for i = 1, 5 do
     tpButton.Size = UDim2.new(0.18, -4, 0, isMobile and 35 or 30)
     tpButton.Position = UDim2.new(0.02 + (i-1) * 0.2, 8, 0, yPos)
     tpButton.BackgroundColor3 = colors.primary
-    tpButton.BackgroundTransparency = 0.2
+    tpButton.BackgroundTransparency = 0.15
     tpButton.Text = "🌸 " .. i
     tpButton.TextColor3 = colors.text
     tpButton.Font = Enum.Font.IndieFlower
@@ -818,6 +815,7 @@ yPos = yPos + (isMobile and 60 or 50)
 -- CHARACTER RESPAWN HANDLER
 -- ======================
 player.CharacterAdded:Connect(function(newCharacter)
+    -- Reset all features
     if isFlying then
         stopFlying()
         flyButton.Text = "✈️ Fly Mode"
@@ -843,6 +841,8 @@ player.CharacterAdded:Connect(function(newCharacter)
         invisibleButton.Text = "👻 Invisible: OFF"
         invisibleButton.BackgroundColor3 = colors.secondary
     end
+    
+    -- Update references
     character = newCharacter
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     humanoid = character:WaitForChild("Humanoid")
@@ -857,10 +857,9 @@ local menuOpen = false
 
 openButton.MouseButton1Click:Connect(function()
     menuFrame.Visible = true
-    menuFrame.Position = UDim2.new(0.5, -(isMobile and 190 or 170), 0.5, -(isMobile and 330 or 330))
+    menuFrame.Position = UDim2.new(0.5, -(isMobile and 200 or 180), 0.5, -(isMobile and 350 or 340))
     TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {
-        Position = UDim2.new(0.5, -(isMobile and 190 or 170), 0.5, -(isMobile and 300 or 290)),
-        BackgroundTransparency = 0.15
+        Position = UDim2.new(0.5, -(isMobile and 200 or 180), 0.5, -(isMobile and 310 or 300))
     }):Play()
     openButton.Visible = false
     menuOpen = true
@@ -868,26 +867,25 @@ end)
 
 closeButton.MouseButton1Click:Connect(function()
     TweenService:Create(menuFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
-        Position = UDim2.new(0.5, -(isMobile and 190 or 170), 0.5, -(isMobile and 330 or 330)),
-        BackgroundTransparency = 0.15
+        Position = UDim2.new(0.5, -(isMobile and 200 or 180), 0.5, -(isMobile and 350 or 340))
     }):Play()
     task.wait(0.3)
     menuFrame.Visible = false
-    menuFrame.Position = UDim2.new(0.5, -(isMobile and 190 or 170), 0.5, -(isMobile and 300 or 290))
+    menuFrame.Position = UDim2.new(0.5, -(isMobile and 200 or 180), 0.5, -(isMobile and 310 or 300))
     openButton.Visible = true
     menuOpen = false
-    if isMobile and mobileFlyControls then
-        mobileFlyControls.Visible = false
-    end
 end)
 
 -- ======================
--- AUTO OPEN ON MOBILE
+-- KEYBIND TO TOGGLE MENU
 -- ======================
-if isMobile then
-    task.wait(0.5)
-    openButton.MouseButton1Click:Fire()
-end
-
--- Loaded successfully
-print("")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.RightShift or input.KeyCode == Enum.KeyCode.LeftShift then
+        if menuOpen then
+            closeButton.MouseButton1Click:Fire()
+        else
+            openButton.MouseButton1Click:Fire()
+        end
+    end
+end)
