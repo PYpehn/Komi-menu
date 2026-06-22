@@ -60,7 +60,27 @@ local currentBackgroundIndex = 1
 local isMobile = UserInputService.TouchEnabled
 
 -- ======================
--- CREATE OPEN BUTTON (BIGGER FOR MOBILE)
+-- VARIABLES FOR FEATURES
+-- ======================
+local isFlying = false
+local flySpeed = 50
+local bodyGyro, bodyVelocity
+local flyConnection
+
+local noclipActive = false
+local noclipConnection
+
+local invisibleActive = false
+
+local waypoints = {}
+local currentWaypoint = 1
+local flowActive = false
+local flowConnection
+
+local menuOpen = false
+
+-- ======================
+-- CREATE OPEN BUTTON
 -- ======================
 local openButton = Instance.new("ImageButton")
 openButton.Name = "OpenButton"
@@ -72,11 +92,6 @@ openButton.BorderSizePixel = 0
 openButton.AutoButtonColor = true
 openButton.Parent = screenGui
 openButton.ZIndex = 10
-
--- Make sure button works on mobile
-openButton.MouseButton1Click:Connect(function()
-    openButton.MouseButton1Click:Fire()
-end)
 
 local openLabel = Instance.new("TextLabel")
 openLabel.Name = "Label"
@@ -93,12 +108,12 @@ openCorner.CornerRadius = UDim.new(0, 15)
 openCorner.Parent = openButton
 
 -- ======================
--- CREATE MENU FRAME (BIGGER FOR MOBILE)
+-- CREATE MENU FRAME
 -- ======================
 local menuFrame = Instance.new("Frame")
 menuFrame.Name = "MenuFrame"
 menuFrame.Size = isMobile and UDim2.new(0.9, 0, 0, 600) or UDim2.new(0, 360, 0, 600)
-menuFrame.Position = UDim2.new(0.05, 0, 0.5, -(isMobile and 300 or 300))
+menuFrame.Position = isMobile and UDim2.new(0.05, 0, 0.1, 0) or UDim2.new(0.5, -180, 0.5, -300)
 menuFrame.BackgroundColor3 = colors.dark
 menuFrame.BackgroundTransparency = 0.5
 menuFrame.BorderSizePixel = 0
@@ -126,7 +141,7 @@ menuCorner.CornerRadius = UDim.new(0, 20)
 menuCorner.Parent = menuBackground
 
 -- ======================
--- TITLE BAR (BIGGER FOR MOBILE)
+-- TITLE BAR
 -- ======================
 local titleBar = Instance.new("Frame")
 titleBar.Name = "TitleBar"
@@ -192,7 +207,7 @@ menuFrame:GetPropertyChangedSignal("Visible"):Connect(function()
 end)
 
 -- ======================
--- DRAG SYSTEM (MOBILE SUPPORT)
+-- DRAG SYSTEM
 -- ======================
 local dragging = false
 local dragStartPos = Vector2.new()
@@ -226,7 +241,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- ======================
--- CLOSE BUTTON (BIGGER FOR MOBILE)
+-- CLOSE BUTTON
 -- ======================
 local closeButton = Instance.new("ImageButton")
 closeButton.Name = "CloseButton"
@@ -238,11 +253,6 @@ closeButton.BorderSizePixel = 0
 closeButton.ZIndex = 3
 closeButton.AutoButtonColor = true
 closeButton.Parent = titleBar
-
--- Make close button work on mobile
-closeButton.MouseButton1Click:Connect(function()
-    closeButton.MouseButton1Click:Fire()
-end)
 
 local closeLabel = Instance.new("TextLabel")
 closeLabel.Name = "Label"
@@ -260,7 +270,7 @@ closeBtnCorner.CornerRadius = UDim.new(0, 10)
 closeBtnCorner.Parent = closeButton
 
 -- ======================
--- CONTENT AREA (MORE TRANSPARENT)
+-- CONTENT AREA
 -- ======================
 local contentFrame = Instance.new("Frame")
 contentFrame.Name = "ContentFrame"
@@ -285,7 +295,6 @@ scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
 scrollingFrame.BackgroundTransparency = 1
 scrollingFrame.ZIndex = 3
 scrollingFrame.Parent = contentFrame
-scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 850)
 scrollingFrame.ScrollBarThickness = isMobile and 8 or 4
 scrollingFrame.ScrollBarImageColor3 = colors.primary
 scrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
@@ -316,9 +325,11 @@ function createCuteButton(parent, text, position, color, size)
     corner.CornerRadius = UDim.new(0, 12)
     corner.Parent = button
     
-    -- Make button work on mobile
-    button.TouchTap:Connect(function()
-        button.MouseButton1Click:Fire()
+    -- Handle both PC and mobile
+    button.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            button.MouseButton1Click:Fire()
+        end
     end)
     
     button.MouseEnter:Connect(function()
@@ -364,9 +375,6 @@ end
 -- ======================
 -- NOCLIP SYSTEM
 -- ======================
-local noclipActive = false
-local noclipConnection
-
 local function toggleNoclip()
     noclipActive = not noclipActive
     
@@ -403,8 +411,6 @@ end
 -- ======================
 -- INVISIBLE SYSTEM
 -- ======================
-local invisibleActive = false
-
 local function toggleInvisible()
     invisibleActive = not invisibleActive
     
@@ -426,11 +432,6 @@ end
 -- ======================
 -- FLY SYSTEM
 -- ======================
-local isFlying = false
-local flySpeed = 50
-local bodyGyro, bodyVelocity
-local flyConnection
-
 local function startFlying()
     if isFlying then return end
     isFlying = true
@@ -575,11 +576,6 @@ end
 -- ======================
 -- WAYPOINT SYSTEM
 -- ======================
-local waypoints = {}
-local currentWaypoint = 1
-local flowActive = false
-local flowConnection
-
 local function teleportToWaypoint(index)
     if not waypoints[index] then 
         createNotification("⚠️ Waypoint " .. index .. " doesn't exist!", true)
@@ -690,36 +686,32 @@ local bgColors = {
 }
 local bgIcons = {"🌸", "🌺", "🌿", "🌟", "✨"}
 
--- On mobile, stack buttons differently
 for i = 1, 5 do
     local btn
     if isMobile then
-        -- Stack vertically on mobile
         btn = createCuteButton(canvas, bgIcons[i] .. " BG " .. i, UDim2.new(0, 8, 0, yPos), bgColors[i])
         btn.Position = UDim2.new(0, 8, 0, yPos)
         yPos = yPos + (isMobile and 55 or 0)
     else
-        -- Row on PC
         btn = createCuteButton(canvas, bgIcons[i] .. " BG " .. i, UDim2.new(0, 8, 0, yPos), bgColors[i], UDim2.new(0.18, -4, 0, 40))
         btn.Position = UDim2.new(0.02 + (i-1) * 0.2, 8, 0, yPos)
     end
     
     btn.MouseButton1Click:Connect(function()
         changeBackground(i)
-        -- Reset all buttons
         for j = 1, 5 do
             bgButtons[j].BackgroundColor3 = bgColors[j]
         end
-        -- Highlight selected
         btn.BackgroundColor3 = colors.success
     end)
     
     bgButtons[i] = btn
 end
 if not isMobile then
-    yPos = yPos + (isMobile and 0 or 55)
+    yPos = yPos + 55
+else
+    yPos = yPos + 10
 end
-yPos = yPos + (isMobile and 10 or 0)
 
 -- Waypoint Section Label
 local wpLabel = Instance.new("TextLabel")
@@ -777,12 +769,10 @@ for i = 1, 5 do
     corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = tpButton
 
-    -- Make TP buttons work on mobile
-    tpButton.TouchTap:Connect(function()
-        teleportToWaypoint(i)
-    end)
-    tpButton.MouseButton1Click:Connect(function()
-        teleportToWaypoint(i)
+    tpButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            teleportToWaypoint(i)
+        end
     end)
 end
 yPos = yPos + (isMobile and 50 or 40)
@@ -848,7 +838,6 @@ canvas.Size = UDim2.new(1, 0, 0, yPos + 20)
 -- CHARACTER RESPAWN HANDLER
 -- ======================
 player.CharacterAdded:Connect(function(newCharacter)
-    -- Reset all features
     if isFlying then
         stopFlying()
         flyButton.Text = "✈️ Fly Mode"
@@ -875,7 +864,6 @@ player.CharacterAdded:Connect(function(newCharacter)
         invisibleButton.BackgroundColor3 = colors.secondary
     end
     
-    -- Update references
     character = newCharacter
     humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     humanoid = character:WaitForChild("Humanoid")
@@ -886,14 +874,18 @@ end)
 -- ======================
 -- OPEN / CLOSE LOGIC
 -- ======================
-local menuOpen = false
+openButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        openButton.MouseButton1Click:Fire()
+    end
+end)
 
 openButton.MouseButton1Click:Connect(function()
     menuFrame.Visible = true
     if isMobile then
         menuFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
         TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {
-            Position = UDim2.new(0.05, 0, 0.5, -(isMobile and 300 or 300))
+            Position = UDim2.new(0.05, 0, 0.5, -300)
         }):Play()
     else
         menuFrame.Position = UDim2.new(0.5, -180, 0.5, -340)
@@ -903,6 +895,12 @@ openButton.MouseButton1Click:Connect(function()
     end
     openButton.Visible = false
     menuOpen = true
+end)
+
+closeButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        closeButton.MouseButton1Click:Fire()
+    end
 end)
 
 closeButton.MouseButton1Click:Connect(function()
@@ -935,7 +933,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
--- Mobile-specific: Add a back button handler
+-- Mobile back button support
 if isMobile then
     UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
