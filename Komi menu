@@ -1,5 +1,5 @@
 --[[
-    WindUI Hub - with Background Customization
+    WindUI Hub - Fixed Empty Tabs
 ]]
 
 local cloneref = (cloneref or clonereference or function(instance)
@@ -27,9 +27,9 @@ do
 end
 
 -- ============================================================
---  DEFAULT BACKGROUND (change this to your own image URL)
+--  DEFAULT BACKGROUND
 -- ============================================================
-local DEFAULT_BG = "https://i.imgur.com/8Km9tLL.jpeg"  -- Replace with your own
+local DEFAULT_BG = "https://i.imgur.com/8Km9tLL.jpeg"
 
 -- ============================================================
 --  CREATE WINDOW
@@ -40,31 +40,32 @@ local Window = WindUI:CreateWindow({
     Icon = "solar:wind-bold",
     Theme = "Dark",
     ToggleKey = Enum.KeyCode.F,
-    Background = DEFAULT_BG,          -- Initial background
-    BackgroundTransparency = 0.2,     -- Slightly visible (0 = fully opaque)
+    Background = DEFAULT_BG,
+    BackgroundTransparency = 0.2,
 })
 
 Window:Tag({
-    Title = "v2.0",
+    Title = "v2.1",
     Color = "ElementBackground",
 })
 
 -- ============================================================
---  TABS
+--  CREATE TABS (explicit references)
 -- ============================================================
 
 -- ====== MAIN TAB ======
-Window:Tab({
+local MainTab = Window:Tab({
     Title = "Main",
     Icon = "warehouse",
 })
 
-Window:Section({
+MainTab:Section({
     Title = "Player Settings",
+    Icon = "user",
 })
 
 -- Walk Speed
-Window:Slider({
+MainTab:Slider({
     Title = "Walk Speed",
     Desc = "Adjust movement speed",
     Flag = "walkSpeed",
@@ -79,7 +80,7 @@ Window:Slider({
 })
 
 -- Jump Power
-Window:Slider({
+MainTab:Slider({
     Title = "Jump Power",
     Desc = "Adjust jump height",
     Flag = "jumpPower",
@@ -93,9 +94,9 @@ Window:Slider({
     end
 })
 
-Window:Divider()
+MainTab:Divider()
 
-Window:Toggle({
+MainTab:Toggle({
     Title = "Infinite Jump",
     Desc = "Jump in mid-air",
     Flag = "infiniteJump",
@@ -105,7 +106,7 @@ Window:Toggle({
     end
 })
 
-Window:Toggle({
+MainTab:Toggle({
     Title = "Fly Mode",
     Desc = "Enable flight",
     Flag = "flyMode",
@@ -170,16 +171,16 @@ ExploitsTab:Toggle({
 })
 
 -- ====== AIMBOT TAB ======
-Window:Tab({
+local AimbotTab = Window:Tab({
     Title = "Aimbot",
     Icon = "locate-fixed",
 })
 
-Window:Section({
+AimbotTab:Section({
     Title = "Aimbot Settings",
 })
 
-Window:Toggle({
+AimbotTab:Toggle({
     Title = "Enable Aimbot",
     Flag = "aimbot",
     Value = false,
@@ -188,7 +189,7 @@ Window:Toggle({
     end
 })
 
-Window:Slider({
+AimbotTab:Slider({
     Title = "Smoothness",
     Flag = "aimSmoothness",
     Value = { Min = 1, Max = 100, Default = 50 },
@@ -197,7 +198,7 @@ Window:Slider({
     end
 })
 
-Window:Dropdown({
+AimbotTab:Dropdown({
     Title = "Target Priority",
     Flag = "aimPriority",
     Values = { "Closest", "Lowest Health", "Highest Health" },
@@ -208,16 +209,16 @@ Window:Dropdown({
 })
 
 -- ====== ESP TAB ======
-Window:Tab({
+local EspTab = Window:Tab({
     Title = "ESP",
     Icon = "eye",
 })
 
-Window:Section({
+EspTab:Section({
     Title = "Visuals",
 })
 
-Window:Toggle({
+EspTab:Toggle({
     Title = "ESP",
     Flag = "esp",
     Value = false,
@@ -226,7 +227,7 @@ Window:Toggle({
     end
 })
 
-Window:Dropdown({
+EspTab:Dropdown({
     Title = "ESP Color",
     Flag = "espColor",
     Values = { "Red", "Blue", "Green", "Yellow", "White", "Pink", "Cyan" },
@@ -236,7 +237,7 @@ Window:Dropdown({
     end
 })
 
-Window:Toggle({
+EspTab:Toggle({
     Title = "Chams",
     Flag = "chams",
     Value = false,
@@ -245,9 +246,9 @@ Window:Toggle({
     end
 })
 
-Window:Divider()
+EspTab:Divider()
 
-Window:Slider({
+EspTab:Slider({
     Title = "Field of View",
     Flag = "fov",
     Value = { Min = 30, Max = 120, Default = 70 },
@@ -256,7 +257,197 @@ Window:Slider({
     end
 })
 
--- ====== SETTINGS TAB (NEW) ======
+-- ====== TELEPORT TAB ======
+local TeleportTab = Window:Tab({
+    Title = "Teleport",
+    Icon = "map-pin",
+})
+
+TeleportTab:Section({
+    Title = "Location Teleport",
+    Icon = "map",
+})
+
+local Locations = {
+    { Name = "Spawn Point", Position = Vector3.new(0, 0, 0) },
+    { Name = "Lobby", Position = Vector3.new(100, 10, 50) },
+    { Name = "Arena", Position = Vector3.new(-200, 20, -150) },
+    { Name = "Shop", Position = Vector3.new(300, 5, -100) },
+    { Name = "Boss Area", Position = Vector3.new(500, 50, 200) },
+}
+
+local locDropdown = TeleportTab:Dropdown({
+    Title = "Select Location",
+    Flag = "teleportLocation",
+    Values = {},
+    Value = "",
+    Callback = function(option) end
+})
+
+local locNames = {}
+for _, loc in ipairs(Locations) do
+    table.insert(locNames, loc.Name)
+end
+locDropdown:Refresh(locNames)
+locDropdown:Select(locNames[1] or "")
+
+TeleportTab:Button({
+    Title = "Teleport Now",
+    Icon = "send",
+    IconAlign = "Left",
+    Color = Color3.fromHex("#30ff6a"),
+    Callback = function()
+        local selected = locDropdown:GetValue()
+        for _, loc in ipairs(Locations) do
+            if loc.Name == selected then
+                local plr = game.Players.LocalPlayer
+                if plr and plr.Character then
+                    local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.CFrame = CFrame.new(loc.Position)
+                        WindUI:Notify({ Title = "Teleported", Content = "Moved to " .. loc.Name, Icon = "check", Duration = 2 })
+                    end
+                end
+                break
+            end
+        end
+    end
+})
+
+TeleportTab:Divider()
+
+TeleportTab:Section({
+    Title = "Quick Teleport",
+    Icon = "zap",
+})
+
+for _, loc in ipairs(Locations) do
+    TeleportTab:Button({
+        Title = loc.Name,
+        Icon = "map-pin",
+        IconAlign = "Left",
+        Callback = function()
+            local plr = game.Players.LocalPlayer
+            if plr and plr.Character then
+                local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    root.CFrame = CFrame.new(loc.Position)
+                    WindUI:Notify({ Title = "Teleported", Content = "Moved to " .. loc.Name, Icon = "check", Duration = 2 })
+                end
+            end
+        end
+    })
+end
+
+-- ====== MISC TAB ======
+local MiscTab = Window:Tab({
+    Title = "Misc",
+    Icon = "settings",
+})
+
+MiscTab:Section({
+    Title = "Extra Utilities",
+    Icon = "tool",
+})
+
+MiscTab:Toggle({
+    Title = "God Mode",
+    Desc = "Become invincible",
+    Flag = "godMode",
+    Value = false,
+    Callback = function(state)
+        _G.GodMode = state
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum then
+                hum.MaxHealth = state and math.huge or 100
+                hum.Health = state and math.huge or 100
+            end
+        end
+    end
+})
+
+MiscTab:Toggle({
+    Title = "Infinite Stamina",
+    Desc = "Never run out of stamina",
+    Flag = "infiniteStamina",
+    Value = false,
+    Callback = function(state)
+        _G.InfiniteStamina = state
+    end
+})
+
+MiscTab:Toggle({
+    Title = "Speed Boost",
+    Desc = "Multiply your speed by 1.5x",
+    Flag = "speedBoost",
+    Value = false,
+    Callback = function(state)
+        _G.SpeedBoost = state
+    end
+})
+
+MiscTab:Divider()
+
+MiscTab:Section({
+    Title = "Notifications",
+})
+
+MiscTab:Button({
+    Title = "Test Notification",
+    Icon = "bell",
+    Callback = function()
+        WindUI:Notify({
+            Title = "Test",
+            Content = "This is a test notification!",
+            Icon = "bell",
+            Duration = 3
+        })
+    end
+})
+
+-- ====== STATS TAB ======
+local StatsTab = Window:Tab({
+    Title = "Stats",
+    Icon = "bar-chart-3",
+})
+
+StatsTab:Section({
+    Title = "Live Player Stats",
+    Icon = "activity",
+})
+
+local statsPara = StatsTab:Paragraph({
+    Title = "Player Information",
+    Desc = "Loading...",
+    Image = "user",
+    ImageSize = 20,
+    Color = "White",
+})
+
+task.spawn(function()
+    while true do
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            local root = plr.Character:FindFirstChild("HumanoidRootPart")
+            if hum and root then
+                local health = math.floor(hum.Health)
+                local maxHealth = math.floor(hum.MaxHealth)
+                local speed = math.floor(hum.WalkSpeed)
+                local pos = root.Position
+                statsPara:SetDesc(string.format(
+                    "Health: %d / %d\nWalk Speed: %d\nPosition: (%.1f, %.1f, %.1f)",
+                    health, maxHealth, speed, pos.X, pos.Y, pos.Z
+                ))
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+-- ====== SETTINGS TAB ======
 local SettingsTab = Window:Tab({
     Title = "Settings",
     Icon = "settings",
@@ -267,19 +458,15 @@ SettingsTab:Section({
     Icon = "image",
 })
 
--- Input for background URL
 local bgInput = SettingsTab:Input({
     Title = "Background URL",
-    Desc = "Paste image URL (https://...) or Roblox asset ID",
+    Desc = "Paste image URL or Roblox asset ID",
     Icon = "link",
     Placeholder = "https://example.com/image.png",
     Value = DEFAULT_BG,
-    Callback = function(text)
-        -- No immediate change, user must click "Apply"
-    end
+    Callback = function(text) end
 })
 
--- Apply button
 SettingsTab:Button({
     Title = "Apply Background",
     Icon = "check",
@@ -288,30 +475,18 @@ SettingsTab:Button({
     Callback = function()
         local url = bgInput:GetValue()
         if url and url ~= "" then
-            -- Try to set the background
             local success, err = pcall(function()
                 Window:SetBackgroundImage(url)
             end)
             if success then
-                WindUI:Notify({
-                    Title = "Background Updated",
-                    Content = "New background applied!",
-                    Icon = "check",
-                    Duration = 2
-                })
+                WindUI:Notify({ Title = "Background Updated", Content = "New background applied!", Icon = "check", Duration = 2 })
             else
-                WindUI:Notify({
-                    Title = "Error",
-                    Content = "Failed to set background: " .. tostring(err),
-                    Icon = "x",
-                    Duration = 3
-                })
+                WindUI:Notify({ Title = "Error", Content = "Failed to set background: " .. tostring(err), Icon = "x", Duration = 3 })
             end
         end
     end
 })
 
--- Transparency slider
 SettingsTab:Slider({
     Title = "Background Transparency",
     Desc = "0 = opaque, 1 = fully transparent",
@@ -332,12 +507,13 @@ SettingsTab:Section({
     Icon = "palette",
 })
 
--- List of preset backgrounds (you can add your own)
 local Presets = {
     { Name = "Space", URL = "https://i.imgur.com/8Km9tLL.jpeg" },
     { Name = "Neon City", URL = "https://i.imgur.com/ZNz3XQx.jpeg" },
     { Name = "Dark Gradient", URL = "rbxassetid://10618928818" },
     { Name = "Cyberpunk", URL = "https://i.imgur.com/1J5Qk2v.jpeg" },
+    { Name = "Sunset", URL = "https://i.imgur.com/3r8nHr7.jpeg" },
+    { Name = "Abstract", URL = "https://i.imgur.com/2BqYlQk.jpeg" },
 }
 
 for _, preset in ipairs(Presets) do
@@ -348,13 +524,8 @@ for _, preset in ipairs(Presets) do
         Callback = function()
             pcall(function()
                 Window:SetBackgroundImage(preset.URL)
-                bgInput:SetValue(preset.URL)   -- Update the input field
-                WindUI:Notify({
-                    Title = "Preset Applied",
-                    Content = preset.Name .. " background set!",
-                    Icon = "check",
-                    Duration = 2
-                })
+                bgInput:SetValue(preset.URL)
+                WindUI:Notify({ Title = "Preset Applied", Content = preset.Name .. " background set!", Icon = "check", Duration = 2 })
             end)
         end
     })
@@ -368,7 +539,7 @@ local InfoTab = Window:Tab({
 
 InfoTab:Paragraph({
     Title = "About",
-    Desc = "Advanced Hub - Built with WindUI\n\nFeatures:\n• Player control (speed, jump, fly)\n• Combat (auto farm, range)\n• Aimbot with priority\n• ESP & Chams\n• FOV adjustment\n• Custom backgrounds",
+    Desc = "Advanced Hub - Built with WindUI\n\nFeatures:\n• Player control (speed, jump, fly)\n• Combat (auto farm, range)\n• Aimbot with priority\n• ESP & Chams\n• FOV adjustment\n• Teleport to locations\n• Misc utilities (God Mode, Stamina)\n• Live stats display\n• Custom backgrounds",
     Buttons = {
         {
             Title = "GitHub",
@@ -399,7 +570,6 @@ VStackLeft:Button({
     Color = Color3.fromHex("#F44732"),
     Callback = function()
         print("Reloading UI...")
-        -- You can add reload logic here
     end,
 })
 
@@ -415,12 +585,29 @@ VStackRight:Button({
 })
 
 -- ============================================================
---  AUTO-SAVE (optional)
+--  AUTO-SAVE CONFIG
 -- ============================================================
 local ConfigManager = Window.ConfigManager
 if ConfigManager then
     ConfigManager:Init(Window)
-    -- Register flags here if needed
+    ConfigManager:RegisterFlag("walkSpeed")
+    ConfigManager:RegisterFlag("jumpPower")
+    ConfigManager:RegisterFlag("infiniteJump")
+    ConfigManager:RegisterFlag("flyMode")
+    ConfigManager:RegisterFlag("autoFarm")
+    ConfigManager:RegisterFlag("attackRange")
+    ConfigManager:RegisterFlag("noclip")
+    ConfigManager:RegisterFlag("aimbot")
+    ConfigManager:RegisterFlag("aimSmoothness")
+    ConfigManager:RegisterFlag("aimPriority")
+    ConfigManager:RegisterFlag("esp")
+    ConfigManager:RegisterFlag("espColor")
+    ConfigManager:RegisterFlag("chams")
+    ConfigManager:RegisterFlag("fov")
+    ConfigManager:RegisterFlag("godMode")
+    ConfigManager:RegisterFlag("infiniteStamina")
+    ConfigManager:RegisterFlag("speedBoost")
+    ConfigManager:RegisterFlag("bgTransparency")
 end
 
 -- ============================================================
@@ -428,7 +615,7 @@ end
 -- ============================================================
 WindUI:Notify({
     Title = "Hub Loaded",
-    Content = "Customize your background in the Settings tab!",
+    Content = "All tabs should now have content! Press F to toggle.",
     Icon = "sparkles",
     Duration = 5
 })
