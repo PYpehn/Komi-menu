@@ -1,984 +1,436 @@
--- ======================
--- STARTERPLAYERSCRIPTS VERSION
--- ======================
+--[[
+    WindUI Hub - with Background Customization
+]]
 
--- Wait for player to load
-local player = game:GetService("Players").LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
--- Create ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "KomiMenu"
-screenGui.Parent = playerGui
-screenGui.ResetOnSpawn = false
-screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-local menuText = "🌸 komi's menu"
-
--- ======================
--- SERVICES
--- ======================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local ContentProvider = game:GetService("ContentProvider")
-
--- Wait for character
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-local humanoid = character:WaitForChild("Humanoid")
-
--- ======================
--- CUTE COLOR SCHEME
--- ======================
-local colors = {
-    primary = Color3.fromRGB(255, 182, 193),
-    secondary = Color3.fromRGB(255, 105, 180),
-    accent = Color3.fromRGB(255, 182, 255),
-    dark = Color3.fromRGB(30, 20, 40),
-    success = Color3.fromRGB(144, 238, 144),
-    warning = Color3.fromRGB(255, 215, 0),
-    danger = Color3.fromRGB(255, 100, 100),
-    text = Color3.fromRGB(255, 255, 255)
-}
-
--- ======================
--- BACKGROUND IMAGE IDS (5 BACKGROUNDS)
--- ======================
-local backgroundIDs = {
-    "130680455454797",   -- BG 1 (default)
-    "133884672746542",   -- BG 2
-    "134744446284339",   -- BG 3
-    "118649265858776",   -- BG 4
-    "72109211503224"     -- BG 5
-}
-local currentBackgroundIndex = 1
-
--- Preload all background images
-local function preloadBackgrounds()
-    local assets = {}
-    for _, id in ipairs(backgroundIDs) do
-        table.insert(assets, "rbxassetid://" .. id)
-    end
-    pcall(function()
-        ContentProvider:PreloadAsync(assets)
-    end)
-end
-coroutine.wrap(preloadBackgrounds)()
-
--- ======================
--- DETECT MOBILE
--- ======================
-local isMobile = UserInputService.TouchEnabled
-
--- ======================
--- VARIABLES FOR FEATURES
--- ======================
-local isFlying = false
-local flySpeed = 50
-local bodyGyro, bodyVelocity
-local flyConnection
-
-local noclipActive = false
-local noclipConnection
-
-local invisibleActive = false
-
-local waypoints = {}
-local currentWaypoint = 1
-local flowActive = false
-local flowConnection
-
-local menuOpen = false
-
--- ======================
--- CREATE OPEN BUTTON
--- ======================
-local openButton = Instance.new("ImageButton")
-openButton.Name = "OpenButton"
-openButton.Size = isMobile and UDim2.new(0, 140, 0, 45) or UDim2.new(0, 120, 0, 40)
-openButton.Position = isMobile and UDim2.new(0.5, -70, 0.02, 0) or UDim2.new(0, 15, 0, 15)
-openButton.BackgroundColor3 = colors.primary
-openButton.BackgroundTransparency = 0.2
-openButton.BorderSizePixel = 0
-openButton.AutoButtonColor = true
-openButton.Parent = screenGui
-openButton.ZIndex = 10
-
-local openLabel = Instance.new("TextLabel")
-openLabel.Name = "Label"
-openLabel.Text = "🌸 Menu"
-openLabel.Size = UDim2.new(1, 0, 1, 0)
-openLabel.BackgroundTransparency = 1
-openLabel.TextColor3 = colors.text
-openLabel.Font = Enum.Font.IndieFlower
-openLabel.TextSize = isMobile and 22 or 18
-openLabel.Parent = openButton
-
-local openCorner = Instance.new("UICorner")
-openCorner.CornerRadius = UDim.new(0, 15)
-openCorner.Parent = openButton
-
--- ======================
--- CREATE MENU FRAME
--- ======================
-local menuFrame = Instance.new("Frame")
-menuFrame.Name = "MenuFrame"
-menuFrame.Size = isMobile and UDim2.new(0.85, 0, 0, 500) or UDim2.new(0, 360, 0, 600)
-menuFrame.Position = isMobile and UDim2.new(0.075, 0, 0.15, 0) or UDim2.new(0.5, -180, 0.5, -300)
-menuFrame.BackgroundColor3 = colors.dark
-menuFrame.BackgroundTransparency = 0.3
-menuFrame.BorderSizePixel = 0
-menuFrame.Visible = false
-menuFrame.Parent = screenGui
-menuFrame.ZIndex = 2
-menuFrame.ClipsDescendants = true
-
--- ======================
--- MENU BACKGROUND IMAGE
--- ======================
-local menuBackground = Instance.new("ImageLabel")
-menuBackground.Name = "MenuBackground"
-menuBackground.Size = UDim2.new(1, 0, 1, 0)
-menuBackground.Position = UDim2.new(0, 0, 0, 0)
-menuBackground.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-menuBackground.BackgroundTransparency = 1
-menuBackground.Image = "rbxassetid://" .. backgroundIDs[currentBackgroundIndex]
-menuBackground.ScaleType = Enum.ScaleType.Stretch
-menuBackground.ZIndex = 1
-menuBackground.Parent = menuFrame
-menuBackground.ResampleMode = Enum.ResamplerMode.Default
-
-local menuCorner = Instance.new("UICorner")
-menuCorner.CornerRadius = UDim.new(0, 20)
-menuCorner.Parent = menuBackground
-
--- ======================
--- TITLE BAR
--- ======================
-local titleBar = Instance.new("Frame")
-titleBar.Name = "TitleBar"
-titleBar.Size = UDim2.new(1, 0, 0, isMobile and 50 or 50)
-titleBar.Position = UDim2.new(0, 0, 0, 0)
-titleBar.BackgroundColor3 = colors.primary
-titleBar.BackgroundTransparency = 0.1
-titleBar.ZIndex = 2
-titleBar.BorderSizePixel = 0
-titleBar.Parent = menuFrame
-
-local titleBarCorner = Instance.new("UICorner")
-titleBarCorner.CornerRadius = UDim.new(0, 20)
-titleBarCorner.Parent = titleBar
-
-local dragHandle = Instance.new("TextLabel")
-dragHandle.Name = "DragHandle"
-dragHandle.Text = "⠿"
-dragHandle.Size = UDim2.new(0, 30, 1, 0)
-dragHandle.Position = UDim2.new(0, 5, 0, 0)
-dragHandle.BackgroundTransparency = 1
-dragHandle.TextColor3 = colors.text
-dragHandle.Font = Enum.Font.IndieFlower
-dragHandle.TextSize = 24
-dragHandle.ZIndex = 3
-dragHandle.TextXAlignment = Enum.TextXAlignment.Center
-dragHandle.TextYAlignment = Enum.TextYAlignment.Center
-dragHandle.Parent = titleBar
-
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Name = "TitleLabel"
-titleLabel.Text = "🌸 " .. menuText
-titleLabel.Size = UDim2.new(1, -90, 1, 0)
-titleLabel.Position = UDim2.new(0, 40, 0, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3 = colors.text
-titleLabel.Font = Enum.Font.IndieFlower
-titleLabel.TextSize = isMobile and 20 or 20
-titleLabel.ZIndex = 3
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-titleLabel.Parent = titleBar
-
--- ======================
--- TITLE ANIMATION
--- ======================
-local function animateTitle()
-    while menuFrame.Visible do
-        TweenService:Create(titleLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            TextSize = isMobile and 22 or 22
-        }):Play()
-        task.wait(0.3)
-        TweenService:Create(titleLabel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-            TextSize = isMobile and 20 or 20
-        }):Play()
-        task.wait(1.5)
-    end
-end
-
-menuFrame:GetPropertyChangedSignal("Visible"):Connect(function()
-    if menuFrame.Visible then
-        coroutine.wrap(animateTitle)()
-    end
+local cloneref = (cloneref or clonereference or function(instance)
+    return instance
 end)
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local RunService = cloneref(game:GetService("RunService"))
 
--- ======================
--- DRAG SYSTEM
--- ======================
-local dragging = false
-local dragStartPos = Vector2.new()
-local dragStartMousePos = Vector2.new()
+local WindUI
 
-titleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStartPos = Vector2.new(menuFrame.Position.X.Scale, menuFrame.Position.Y.Scale)
-        dragStartMousePos = Vector2.new(input.Position.X, input.Position.Y)
-        titleBar.BackgroundTransparency = 0.3
-    end
-end)
-
-titleBar.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-        titleBar.BackgroundTransparency = 0.1
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = Vector2.new(input.Position.X - dragStartMousePos.X, input.Position.Y - dragStartMousePos.Y)
-        local newX = dragStartPos.X + (delta.X / screenGui.AbsoluteSize.X)
-        local newY = dragStartPos.Y + (delta.Y / screenGui.AbsoluteSize.Y)
-        newX = math.clamp(newX, 0, 1 - menuFrame.Size.X.Scale)
-        newY = math.clamp(newY, 0, 1 - menuFrame.Size.Y.Scale)
-        menuFrame.Position = UDim2.new(newX, 0, newY, 0)
-    end
-end)
-
--- ======================
--- CLOSE BUTTON
--- ======================
-local closeButton = Instance.new("ImageButton")
-closeButton.Name = "CloseButton"
-closeButton.Size = isMobile and UDim2.new(0, 40, 0, 40) or UDim2.new(0, 35, 0, 35)
-closeButton.Position = UDim2.new(1, -50, 0, 5)
-closeButton.BackgroundColor3 = colors.danger
-closeButton.BackgroundTransparency = 0.1
-closeButton.BorderSizePixel = 0
-closeButton.ZIndex = 3
-closeButton.AutoButtonColor = true
-closeButton.Parent = titleBar
-
-local closeLabel = Instance.new("TextLabel")
-closeLabel.Name = "Label"
-closeLabel.Text = "✕"
-closeLabel.Size = UDim2.new(1, 0, 1, 0)
-closeLabel.BackgroundTransparency = 1
-closeLabel.TextColor3 = colors.text
-closeLabel.Font = Enum.Font.IndieFlower
-closeLabel.TextSize = isMobile and 22 or 18
-closeLabel.ZIndex = 4
-closeLabel.Parent = closeButton
-
-local closeBtnCorner = Instance.new("UICorner")
-closeBtnCorner.CornerRadius = UDim.new(0, 10)
-closeBtnCorner.Parent = closeButton
-
--- ======================
--- CONTENT AREA
--- ======================
-local contentFrame = Instance.new("Frame")
-contentFrame.Name = "ContentFrame"
-contentFrame.Size = UDim2.new(1, -20, 1, -70)
-contentFrame.Position = UDim2.new(0, 10, 0, 60)
-contentFrame.BackgroundColor3 = colors.dark
-contentFrame.BackgroundTransparency = 0.6
-contentFrame.ZIndex = 2
-contentFrame.BorderSizePixel = 0
-contentFrame.Parent = menuFrame
-
-local contentCorner = Instance.new("UICorner")
-contentCorner.CornerRadius = UDim.new(0, 12)
-contentCorner.Parent = contentFrame
-
--- ======================
--- SCROLLING CONTAINER
--- ======================
-local scrollingFrame = Instance.new("ScrollingFrame")
-scrollingFrame.Size = UDim2.new(1, 0, 1, 0)
-scrollingFrame.Position = UDim2.new(0, 0, 0, 0)
-scrollingFrame.BackgroundTransparency = 1
-scrollingFrame.ZIndex = 3
-scrollingFrame.Parent = contentFrame
-scrollingFrame.ScrollBarThickness = isMobile and 6 or 4
-scrollingFrame.ScrollBarImageColor3 = colors.primary
-scrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Right
-scrollingFrame.ScrollingEnabled = true
-
-local canvas = Instance.new("Frame")
-canvas.Size = UDim2.new(1, 0, 0, 830)
-canvas.Position = UDim2.new(0, 0, 0, 0)
-canvas.BackgroundTransparency = 1
-canvas.Parent = scrollingFrame
-
--- ======================
--- HELPER FUNCTIONS
--- ======================
-function createCuteButton(parent, text, position, color, size)
-    local button = Instance.new("TextButton")
-    button.Size = size or UDim2.new(1, -16, 0, isMobile and 40 or 40)
-    button.Position = position
-    button.BackgroundColor3 = color or colors.secondary
-    button.BackgroundTransparency = 0.15
-    button.Text = text
-    button.TextColor3 = colors.text
-    button.Font = Enum.Font.IndieFlower
-    button.TextSize = isMobile and 16 or 16
-    button.ZIndex = 3
-    button.Parent = parent
-    
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = button
-    
-    button.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            button.MouseButton1Click:Fire()
-        end
+do
+    local ok, result = pcall(function()
+        return require("./src/Init")
     end)
-    
-    button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.35,
-            Size = size and UDim2.new(size.X.Scale + 0.02, size.X.Offset, size.Y.Scale + 0.02, size.Y.Offset) or UDim2.new(1, -12, 0, isMobile and 44 or 44)
-        }):Play()
-    end)
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {
-            BackgroundTransparency = 0.15,
-            Size = size or UDim2.new(1, -16, 0, isMobile and 40 or 40)
-        }):Play()
-    end)
-    
-    return button
-end
 
-function createNotification(text, isError)
-    local notif = Instance.new("TextLabel")
-    notif.Size = UDim2.new(0, isMobile and 250 or 250, 0, isMobile and 40 or 40)
-    notif.Position = UDim2.new(0.5, -(isMobile and 125 or 125), 0, 20)
-    notif.BackgroundColor3 = isError and colors.danger or colors.success
-    notif.BackgroundTransparency = 0.15
-    notif.Text = "🌸 " .. text
-    notif.TextColor3 = colors.text
-    notif.Font = Enum.Font.IndieFlower
-    notif.TextSize = isMobile and 16 or 16
-    notif.ZIndex = 10
-    notif.Parent = screenGui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = notif
-    
-    notif.Position = UDim2.new(0.5, -(isMobile and 125 or 125), 0, -40)
-    TweenService:Create(notif, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {
-        Position = UDim2.new(0.5, -(isMobile and 125 or 125), 0, 30)
-    }):Play()
-    game:GetService("Debris"):AddItem(notif, 3)
-end
-
--- ======================
--- NOCLIP SYSTEM
--- ======================
-local function toggleNoclip()
-    noclipActive = not noclipActive
-    
-    if noclipActive then
-        if noclipConnection then noclipConnection:Disconnect() end
-        noclipConnection = RunService.RenderStepped:Connect(function()
-            local char = player.Character
-            if char then
-                for _, part in pairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
-                    end
-                end
-            end
-        end)
-        createNotification("✨ Noclip Enabled!")
+    if ok then
+        WindUI = result
     else
-        if noclipConnection then
-            noclipConnection:Disconnect()
-            noclipConnection = nil
-        end
-        local char = player.Character
-        if char then
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
-        end
-        createNotification("🚫 Noclip Disabled!")
-    end
-end
-
--- ======================
--- INVISIBLE SYSTEM
--- ======================
-local function toggleInvisible()
-    invisibleActive = not invisibleActive
-    
-    local char = player.Character
-    if char then
-        for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.Transparency = invisibleActive and 1 or 0
-            end
-        end
-        if invisibleActive then
-            createNotification("👻 Invisible Mode ON!")
+        if RunService:IsStudio() or not writefile then
+            WindUI = require(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init"))
         else
-            createNotification("👀 Invisible Mode OFF!")
+            WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
         end
     end
 end
 
--- ======================
--- FLY SYSTEM
--- ======================
-local function startFlying()
-    if isFlying then return end
-    isFlying = true
+-- ============================================================
+--  DEFAULT BACKGROUND (change this to your own image URL)
+-- ============================================================
+local DEFAULT_BG = "https://i.imgur.com/8Km9tLL.jpeg"  -- Replace with your own
 
-    humanoid.PlatformStand = true
+-- ============================================================
+--  CREATE WINDOW
+-- ============================================================
+local Window = WindUI:CreateWindow({
+    Title = "Advanced Hub",
+    Author = "by .ftgs",
+    Icon = "solar:wind-bold",
+    Theme = "Dark",
+    ToggleKey = Enum.KeyCode.F,
+    Background = DEFAULT_BG,          -- Initial background
+    BackgroundTransparency = 0.2,     -- Slightly visible (0 = fully opaque)
+})
 
-    bodyGyro = Instance.new("BodyGyro")
-    bodyGyro.CFrame = humanoidRootPart.CFrame
-    bodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
-    bodyGyro.P = 100000
-    bodyGyro.Parent = humanoidRootPart
+Window:Tag({
+    Title = "v2.0",
+    Color = "ElementBackground",
+})
 
-    bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(400000, 400000, 400000)
-    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    bodyVelocity.Parent = humanoidRootPart
+-- ============================================================
+--  TABS
+-- ============================================================
 
-    flyConnection = RunService.RenderStepped:Connect(function()
-        if not isFlying or not humanoidRootPart then return end
+-- ====== MAIN TAB ======
+Window:Tab({
+    Title = "Main",
+    Icon = "warehouse",
+})
 
-        local moveDirection = Vector3.zero
-        local camera = workspace.CurrentCamera
+Window:Section({
+    Title = "Player Settings",
+})
 
-        if camera then
-            local cameraCFrame = camera.CFrame
+-- Walk Speed
+Window:Slider({
+    Title = "Walk Speed",
+    Desc = "Adjust movement speed",
+    Flag = "walkSpeed",
+    Value = { Min = 16, Max = 100, Default = 50 },
+    Callback = function(value)
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = value end
+        end
+    end
+})
 
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                moveDirection += cameraCFrame.LookVector
+-- Jump Power
+Window:Slider({
+    Title = "Jump Power",
+    Desc = "Adjust jump height",
+    Flag = "jumpPower",
+    Value = { Min = 50, Max = 200, Default = 50 },
+    Callback = function(value)
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum then hum.JumpPower = value end
+        end
+    end
+})
+
+Window:Divider()
+
+Window:Toggle({
+    Title = "Infinite Jump",
+    Desc = "Jump in mid-air",
+    Flag = "infiniteJump",
+    Value = false,
+    Callback = function(state)
+        _G.InfiniteJump = state
+    end
+})
+
+Window:Toggle({
+    Title = "Fly Mode",
+    Desc = "Enable flight",
+    Flag = "flyMode",
+    Value = false,
+    Callback = function(state)
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum then
+                hum.PlatformStand = state
+                local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                if root then root.Anchored = state end
             end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                moveDirection -= cameraCFrame.LookVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                moveDirection -= cameraCFrame.RightVector
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                moveDirection += cameraCFrame.RightVector
-            end
-
-            bodyGyro.CFrame = CFrame.lookAt(humanoidRootPart.Position, humanoidRootPart.Position + cameraCFrame.LookVector)
-        end
-
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            moveDirection += Vector3.new(0, 1, 0)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-            moveDirection -= Vector3.new(0, 1, 0)
-        end
-
-        if moveDirection.Magnitude > 0 then
-            bodyVelocity.Velocity = moveDirection.Unit * flySpeed
-        else
-            bodyVelocity.Velocity = Vector3.zero
-        end
-    end)
-end
-
-local function stopFlying()
-    if not isFlying then return end
-    isFlying = false
-
-    if bodyGyro then bodyGyro:Destroy() end
-    if bodyVelocity then bodyVelocity:Destroy() end
-    if flyConnection then flyConnection:Disconnect() end
-
-    humanoid.PlatformStand = false
-end
-
--- ======================
--- MOBILE FLY CONTROLS
--- ======================
-local mobileFlyControls
-local mobileFlyConnections = {}
-
-if isMobile then
-    mobileFlyControls = Instance.new("Frame")
-    mobileFlyControls.Name = "MobileFlyControls"
-    mobileFlyControls.Size = UDim2.new(0, 240, 0, 200)
-    mobileFlyControls.Position = UDim2.new(0.5, -120, 0.7, -100)
-    mobileFlyControls.BackgroundTransparency = 1
-    mobileFlyControls.Visible = false
-    mobileFlyControls.ZIndex = 5
-    mobileFlyControls.Parent = screenGui
-
-    local function createFlyButton(text, position, color)
-        local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, 65, 0, 65)
-        btn.Position = position
-        btn.BackgroundColor3 = color
-        btn.BackgroundTransparency = 0.2
-        btn.Text = text
-        btn.TextColor3 = colors.text
-        btn.Font = Enum.Font.IndieFlower
-        btn.TextSize = 30
-        btn.ZIndex = 5
-        btn.Parent = mobileFlyControls
-        
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 15)
-        corner.Parent = btn
-        
-        return btn
-    end
-
-    local upFly = createFlyButton("⬆️", UDim2.new(0.5, -32.5, 0, 0), colors.primary)
-    local downFly = createFlyButton("⬇️", UDim2.new(0.5, -32.5, 0, 130), colors.danger)
-    local leftFly = createFlyButton("⬅️", UDim2.new(0, 10, 0, 65), colors.warning)
-    local rightFly = createFlyButton("➡️", UDim2.new(0, 165, 0, 65), colors.warning)
-
-    local function setupMobileFly(btn, dirFunc)
-        local connection
-        btn.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch then
-                if not isFlying then return end
-                if connection then connection:Disconnect() end
-                connection = RunService.RenderStepped:Connect(function()
-                    if not isFlying or not bodyVelocity then
-                        if connection then
-                            connection:Disconnect()
-                            connection = nil
-                        end
-                        return
-                    end
-                    local dir = dirFunc()
-                    if dir.Magnitude > 0 then
-                        bodyVelocity.Velocity = dir.Unit * flySpeed
-                    end
-                end)
-            end
-        end)
-        
-        btn.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.Touch then
-                if connection then
-                    connection:Disconnect()
-                    connection = nil
-                end
-                if bodyVelocity then
-                    bodyVelocity.Velocity = Vector3.zero
-                end
-            end
-        end)
-        
-        table.insert(mobileFlyConnections, {
-            button = btn,
-            disconnect = function()
-                if connection then
-                    connection:Disconnect()
-                    connection = nil
-                end
-            end
-        })
-    end
-
-    setupMobileFly(upFly, function() return Vector3.new(0, 1, 0) end)
-    setupMobileFly(downFly, function() return Vector3.new(0, -1, 0) end)
-    setupMobileFly(leftFly, function()
-        local cam = workspace.CurrentCamera
-        return cam and -cam.CFrame.RightVector or Vector3.new(-1, 0, 0)
-    end)
-    setupMobileFly(rightFly, function()
-        local cam = workspace.CurrentCamera
-        return cam and cam.CFrame.RightVector or Vector3.new(1, 0, 0)
-    end)
-end
-
-local function cleanupMobileFly()
-    if mobileFlyConnections then
-        for _, conn in ipairs(mobileFlyConnections) do
-            conn.disconnect()
-        end
-        mobileFlyConnections = {}
-    end
-end
-
--- ======================
--- WAYPOINT SYSTEM
--- ======================
-local function teleportToWaypoint(index)
-    if not waypoints[index] then 
-        createNotification("⚠️ Waypoint " .. index .. " doesn't exist!", true)
-        return 
-    end
-    local pos = waypoints[index].position
-    local char = player.Character
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        char:FindFirstChild("HumanoidRootPart").CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
-        createNotification("✨ Teleported to WP " .. index)
-    end
-end
-
--- ======================
--- CHANGE BACKGROUND
--- ======================
-local function changeBackground(index)
-    currentBackgroundIndex = index
-    local imageId = "rbxassetid://" .. backgroundIDs[index]
-    menuBackground.Image = ""
-    task.wait(0.05)
-    menuBackground.Image = imageId
-    createNotification("🎨 Background " .. index .. " selected!")
-end
-
--- ======================
--- CREATE BUTTONS
--- ======================
-local yPos = 0
-
--- Fly Button
-local flyButton = createCuteButton(canvas, "✈️ Fly Mode", UDim2.new(0, 8, 0, yPos), colors.primary)
-flyButton.MouseButton1Click:Connect(function()
-    if not isFlying then
-        startFlying()
-        flyButton.Text = "🛑 Stop Flying"
-        flyButton.BackgroundColor3 = colors.danger
-        if isMobile and mobileFlyControls then
-            mobileFlyControls.Visible = true
-        end
-    else
-        stopFlying()
-        cleanupMobileFly()
-        flyButton.Text = "✈️ Fly Mode"
-        flyButton.BackgroundColor3 = colors.primary
-        if isMobile and mobileFlyControls then
-            mobileFlyControls.Visible = false
         end
     end
-end)
-yPos = yPos + (isMobile and 50 or 50)
+})
 
--- Noclip Button
-local noclipButton = createCuteButton(canvas, "🌀 Noclip: OFF", UDim2.new(0, 8, 0, yPos), colors.accent)
-noclipButton.MouseButton1Click:Connect(function()
-    toggleNoclip()
-    noclipButton.Text = noclipActive and "🌀 Noclip: ON" or "🌀 Noclip: OFF"
-    noclipButton.BackgroundColor3 = noclipActive and colors.success or colors.accent
-end)
-yPos = yPos + (isMobile and 50 or 50)
+-- ====== EXPLOITS TAB ======
+local ExploitsTab = Window:Tab({
+    Title = "Exploits",
+    Icon = "terminal",
+})
 
--- Invisible Button
-local invisibleButton = createCuteButton(canvas, "👻 Invisible: OFF", UDim2.new(0, 8, 0, yPos), colors.secondary)
-invisibleButton.MouseButton1Click:Connect(function()
-    toggleInvisible()
-    invisibleButton.Text = invisibleActive and "👻 Invisible: ON" or "👻 Invisible: OFF"
-    invisibleButton.BackgroundColor3 = invisibleActive and colors.success or colors.secondary
-end)
-yPos = yPos + (isMobile and 50 or 50)
+ExploitsTab:Section({
+    Title = "Combat",
+    Icon = "sword",
+})
 
--- Speed Button
-local speedButton = createCuteButton(canvas, "⚡ Speed: 16", UDim2.new(0, 8, 0, yPos), colors.success)
-speedButton.MouseButton1Click:Connect(function()
-    if humanoid.WalkSpeed == 16 then
-        humanoid.WalkSpeed = 50
-        speedButton.Text = "⚡ Speed: 50"
-        speedButton.BackgroundColor3 = colors.warning
-    elseif humanoid.WalkSpeed == 50 then
-        humanoid.WalkSpeed = 100
-        speedButton.Text = "⚡ Speed: 100"
-        speedButton.BackgroundColor3 = colors.danger
-    else
-        humanoid.WalkSpeed = 16
-        speedButton.Text = "⚡ Speed: 16"
-        speedButton.BackgroundColor3 = colors.success
+ExploitsTab:Toggle({
+    Title = "Auto Farm",
+    Desc = "Automatically attack enemies",
+    Flag = "autoFarm",
+    Value = false,
+    Callback = function(state)
+        _G.AutoFarm = state
     end
-end)
-yPos = yPos + (isMobile and 50 or 50)
+})
 
--- Background Label
-local bgLabel = Instance.new("TextLabel")
-bgLabel.Size = UDim2.new(1, -16, 0, isMobile and 25 or 25)
-bgLabel.Position = UDim2.new(0, 8, 0, yPos)
-bgLabel.BackgroundTransparency = 0.3
-bgLabel.Text = "🎨 Choose Background:"
-bgLabel.TextColor3 = colors.text
-bgLabel.Font = Enum.Font.IndieFlower
-bgLabel.TextSize = isMobile and 14 or 14
-bgLabel.ZIndex = 3
-bgLabel.TextXAlignment = Enum.TextXAlignment.Center
-bgLabel.Parent = canvas
-yPos = yPos + (isMobile and 30 or 30)
-
--- Background Buttons (5 buttons)
-local bgButtons = {}
-local bgColors = {
-    Color3.fromRGB(255, 182, 193),
-    Color3.fromRGB(255, 105, 180),
-    Color3.fromRGB(255, 182, 255),
-    Color3.fromRGB(144, 238, 144),
-    Color3.fromRGB(255, 215, 0)
-}
-local bgIcons = {"🌸", "🌺", "🌿", "🌟", "✨"}
-
-for i = 1, 5 do
-    local btn = createCuteButton(canvas, bgIcons[i] .. " BG " .. i, UDim2.new(0, 8, 0, yPos), bgColors[i], UDim2.new(0.18, -4, 0, isMobile and 35 or 40))
-    btn.Position = UDim2.new(0.02 + (i-1) * 0.2, 8, 0, yPos)
-    
-    btn.MouseButton1Click:Connect(function()
-        changeBackground(i)
-        for j = 1, 5 do
-            bgButtons[j].BackgroundColor3 = bgColors[j]
-        end
-        btn.BackgroundColor3 = colors.success
-    end)
-    
-    bgButtons[i] = btn
-end
-yPos = yPos + 50
-
--- Waypoint Section Label
-local wpLabel = Instance.new("TextLabel")
-wpLabel.Size = UDim2.new(1, -16, 0, isMobile and 25 or 25)
-wpLabel.Position = UDim2.new(0, 8, 0, yPos)
-wpLabel.BackgroundTransparency = 0.3
-wpLabel.Text = "📍 Waypoints:"
-wpLabel.TextColor3 = colors.text
-wpLabel.Font = Enum.Font.IndieFlower
-wpLabel.TextSize = isMobile and 14 or 14
-wpLabel.ZIndex = 3
-wpLabel.TextXAlignment = Enum.TextXAlignment.Center
-wpLabel.Parent = canvas
-yPos = yPos + (isMobile and 30 or 30)
-
--- Add Waypoint
-local addWPButton = createCuteButton(canvas, "📍 Add Waypoint", UDim2.new(0, 8, 0, yPos), colors.accent)
-addWPButton.MouseButton1Click:Connect(function()
-    local pos = humanoidRootPart.Position
-    table.insert(waypoints, {position = pos})
-    createNotification("📍 Waypoint " .. #waypoints .. " added!")
-end)
-yPos = yPos + (isMobile and 50 or 50)
-
--- Clear Waypoints
-local clearWPButton = createCuteButton(canvas, "🗑️ Clear Waypoints", UDim2.new(0, 8, 0, yPos), colors.danger)
-clearWPButton.MouseButton1Click:Connect(function()
-    if flowActive then
-        flowActive = false
-        if flowConnection then flowConnection:Disconnect() end
-        flowButton.Text = "🔄 Flow: OFF"
-        flowButton.BackgroundColor3 = colors.accent
+ExploitsTab:Slider({
+    Title = "Attack Range",
+    Flag = "attackRange",
+    Value = { Min = 5, Max = 50, Default = 10 },
+    Callback = function(value)
+        _G.AttackRange = value
     end
-    waypoints = {}
-    currentWaypoint = 1
-    createNotification("🗑️ Waypoints cleared!")
-end)
-yPos = yPos + (isMobile and 50 or 50)
+})
 
--- TP Buttons
-for i = 1, 5 do
-    local tpButton = Instance.new("TextButton")
-    tpButton.Size = UDim2.new(0.18, -4, 0, isMobile and 30 or 30)
-    tpButton.Position = UDim2.new(0.02 + (i-1) * 0.2, 8, 0, yPos)
-    tpButton.BackgroundColor3 = colors.primary
-    tpButton.BackgroundTransparency = 0.15
-    tpButton.Text = "🌸 " .. i
-    tpButton.TextColor3 = colors.text
-    tpButton.Font = Enum.Font.IndieFlower
-    tpButton.TextSize = isMobile and 14 or 14
-    tpButton.ZIndex = 3
-    tpButton.Parent = canvas
+ExploitsTab:Divider()
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = tpButton
+ExploitsTab:Section({
+    Title = "Movement",
+})
 
-    tpButton.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            teleportToWaypoint(i)
-        end
-    end)
-end
-yPos = yPos + (isMobile and 40 or 40)
+ExploitsTab:Toggle({
+    Title = "Noclip",
+    Desc = "Walk through walls",
+    Flag = "noclip",
+    Value = false,
+    Callback = function(state)
+        _G.Noclip = state
+    end
+})
 
--- Flow Button
-local flowButton = createCuteButton(canvas, "🔄 Flow: OFF", UDim2.new(0, 8, 0, yPos), colors.accent)
-flowButton.MouseButton1Click:Connect(function()
-    if flowActive then
-        flowActive = false
-        if flowConnection then flowConnection:Disconnect() end
-        flowButton.Text = "🔄 Flow: OFF"
-        flowButton.BackgroundColor3 = colors.accent
-        createNotification("🔄 Flow stopped")
-    else
-        if #waypoints < 2 then
-            createNotification("⚠️ Need at least 2 waypoints!", true)
-            return
-        end
-        flowActive = true
-        currentWaypoint = 1
-        flowButton.Text = "🔄 Flow: ON"
-        flowButton.BackgroundColor3 = colors.success
-        createNotification("🔄 Flowing through waypoints...")
+-- ====== AIMBOT TAB ======
+Window:Tab({
+    Title = "Aimbot",
+    Icon = "locate-fixed",
+})
 
-        flowConnection = RunService.RenderStepped:Connect(function()
-            if not flowActive then
-                if flowConnection then flowConnection:Disconnect() end
-                return
-            end
+Window:Section({
+    Title = "Aimbot Settings",
+})
 
-            local char = player.Character
-            if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+Window:Toggle({
+    Title = "Enable Aimbot",
+    Flag = "aimbot",
+    Value = false,
+    Callback = function(state)
+        _G.Aimbot = state
+    end
+})
 
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            local currentPos = hrp.Position
-            local targetPos = waypoints[currentWaypoint].position
-            local distance = (targetPos - currentPos).Magnitude
+Window:Slider({
+    Title = "Smoothness",
+    Flag = "aimSmoothness",
+    Value = { Min = 1, Max = 100, Default = 50 },
+    Callback = function(value)
+        _G.AimSmoothness = value
+    end
+})
 
-            if distance < 5 then
-                currentWaypoint = currentWaypoint + 1
-                if currentWaypoint > #waypoints then
-                    currentWaypoint = 1
-                end
+Window:Dropdown({
+    Title = "Target Priority",
+    Flag = "aimPriority",
+    Values = { "Closest", "Lowest Health", "Highest Health" },
+    Value = "Closest",
+    Callback = function(option)
+        _G.AimPriority = option
+    end
+})
+
+-- ====== ESP TAB ======
+Window:Tab({
+    Title = "ESP",
+    Icon = "eye",
+})
+
+Window:Section({
+    Title = "Visuals",
+})
+
+Window:Toggle({
+    Title = "ESP",
+    Flag = "esp",
+    Value = false,
+    Callback = function(state)
+        _G.ESP = state
+    end
+})
+
+Window:Dropdown({
+    Title = "ESP Color",
+    Flag = "espColor",
+    Values = { "Red", "Blue", "Green", "Yellow", "White", "Pink", "Cyan" },
+    Value = "Red",
+    Callback = function(option)
+        _G.ESPColor = option
+    end
+})
+
+Window:Toggle({
+    Title = "Chams",
+    Flag = "chams",
+    Value = false,
+    Callback = function(state)
+        _G.Chams = state
+    end
+})
+
+Window:Divider()
+
+Window:Slider({
+    Title = "Field of View",
+    Flag = "fov",
+    Value = { Min = 30, Max = 120, Default = 70 },
+    Callback = function(value)
+        game.Workspace.CurrentCamera.FieldOfView = value
+    end
+})
+
+-- ====== SETTINGS TAB (NEW) ======
+local SettingsTab = Window:Tab({
+    Title = "Settings",
+    Icon = "settings",
+})
+
+SettingsTab:Section({
+    Title = "Background Customization",
+    Icon = "image",
+})
+
+-- Input for background URL
+local bgInput = SettingsTab:Input({
+    Title = "Background URL",
+    Desc = "Paste image URL (https://...) or Roblox asset ID",
+    Icon = "link",
+    Placeholder = "https://example.com/image.png",
+    Value = DEFAULT_BG,
+    Callback = function(text)
+        -- No immediate change, user must click "Apply"
+    end
+})
+
+-- Apply button
+SettingsTab:Button({
+    Title = "Apply Background",
+    Icon = "check",
+    IconAlign = "Left",
+    Color = Color3.fromHex("#315dff"),
+    Callback = function()
+        local url = bgInput:GetValue()
+        if url and url ~= "" then
+            -- Try to set the background
+            local success, err = pcall(function()
+                Window:SetBackgroundImage(url)
+            end)
+            if success then
+                WindUI:Notify({
+                    Title = "Background Updated",
+                    Content = "New background applied!",
+                    Icon = "check",
+                    Duration = 2
+                })
             else
-                local direction = (targetPos - currentPos).Unit
-                local newPos = currentPos + direction * 3
-                hrp.CFrame = CFrame.new(newPos)
-
-                if isFlying and bodyVelocity then
-                    bodyVelocity.Velocity = direction * flySpeed
-                end
+                WindUI:Notify({
+                    Title = "Error",
+                    Content = "Failed to set background: " .. tostring(err),
+                    Icon = "x",
+                    Duration = 3
+                })
             end
+        end
+    end
+})
+
+-- Transparency slider
+SettingsTab:Slider({
+    Title = "Background Transparency",
+    Desc = "0 = opaque, 1 = fully transparent",
+    Flag = "bgTransparency",
+    Value = { Min = 0, Max = 1, Default = 0.2 },
+    Step = 0.05,
+    Callback = function(value)
+        pcall(function()
+            Window:SetBackgroundImageTransparency(value)
         end)
     end
-end)
-yPos = yPos + (isMobile and 50 or 50)
+})
 
--- Update canvas size
-scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, yPos + 20)
-canvas.Size = UDim2.new(1, 0, 0, yPos + 20)
+SettingsTab:Divider()
 
--- ======================
--- CHARACTER RESPAWN HANDLER
--- ======================
-player.CharacterAdded:Connect(function(newCharacter)
-    if isFlying then
-        stopFlying()
-        cleanupMobileFly()
-        flyButton.Text = "✈️ Fly Mode"
-        flyButton.BackgroundColor3 = colors.primary
-        if isMobile and mobileFlyControls then
-            mobileFlyControls.Visible = false
+SettingsTab:Section({
+    Title = "Preset Backgrounds",
+    Icon = "palette",
+})
+
+-- List of preset backgrounds (you can add your own)
+local Presets = {
+    { Name = "Space", URL = "https://i.imgur.com/8Km9tLL.jpeg" },
+    { Name = "Neon City", URL = "https://i.imgur.com/ZNz3XQx.jpeg" },
+    { Name = "Dark Gradient", URL = "rbxassetid://10618928818" },
+    { Name = "Cyberpunk", URL = "https://i.imgur.com/1J5Qk2v.jpeg" },
+}
+
+for _, preset in ipairs(Presets) do
+    SettingsTab:Button({
+        Title = preset.Name,
+        Icon = "image",
+        IconAlign = "Left",
+        Callback = function()
+            pcall(function()
+                Window:SetBackgroundImage(preset.URL)
+                bgInput:SetValue(preset.URL)   -- Update the input field
+                WindUI:Notify({
+                    Title = "Preset Applied",
+                    Content = preset.Name .. " background set!",
+                    Icon = "check",
+                    Duration = 2
+                })
+            end)
         end
-    end
-    if flowActive then
-        flowActive = false
-        if flowConnection then flowConnection:Disconnect() end
-        flowButton.Text = "🔄 Flow: OFF"
-        flowButton.BackgroundColor3 = colors.accent
-    end
-    if noclipActive then
-        noclipActive = false
-        if noclipConnection then noclipConnection:Disconnect() end
-        noclipButton.Text = "🌀 Noclip: OFF"
-        noclipButton.BackgroundColor3 = colors.accent
-    end
-    if invisibleActive then
-        invisibleActive = false
-        invisibleButton.Text = "👻 Invisible: OFF"
-        invisibleButton.BackgroundColor3 = colors.secondary
-    end
-    
-    character = newCharacter
-    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-    humanoid = character:WaitForChild("Humanoid")
-    speedButton.Text = "⚡ Speed: 16"
-    speedButton.BackgroundColor3 = colors.success
-end)
-
--- ======================
--- OPEN / CLOSE LOGIC
--- ======================
-openButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        openButton.MouseButton1Click:Fire()
-    end
-end)
-
-openButton.MouseButton1Click:Connect(function()
-    menuFrame.Visible = true
-    if isMobile then
-        menuFrame.Position = UDim2.new(0.075, 0, 0.15, 0)
-    else
-        menuFrame.Position = UDim2.new(0.5, -180, 0.5, -340)
-        TweenService:Create(menuFrame, TweenInfo.new(0.5, Enum.EasingStyle.Bounce), {
-            Position = UDim2.new(0.5, -180, 0.5, -300)
-        }):Play()
-    end
-    openButton.Visible = false
-    menuOpen = true
-end)
-
-closeButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        closeButton.MouseButton1Click:Fire()
-    end
-end)
-
-closeButton.MouseButton1Click:Connect(function()
-    if isMobile then
-        menuFrame.Visible = false
-    else
-        TweenService:Create(menuFrame, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
-            Position = UDim2.new(0.5, -180, 0.5, -340)
-        }):Play()
-        task.wait(0.3)
-        menuFrame.Visible = false
-        menuFrame.Position = UDim2.new(0.5, -180, 0.5, -300)
-    end
-    openButton.Visible = true
-    menuOpen = false
-end)
-
--- ======================
--- KEYBIND TO TOGGLE MENU
--- ======================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.RightShift or input.KeyCode == Enum.KeyCode.LeftShift then
-        if menuOpen then
-            closeButton.MouseButton1Click:Fire()
-        else
-            openButton.MouseButton1Click:Fire()
-        end
-    end
-end)
-
--- Mobile back button support
-if isMobile then
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if gameProcessed then return end
-        if input.KeyCode == Enum.KeyCode.Back then
-            if menuOpen then
-                closeButton.MouseButton1Click:Fire()
-            end
-        end
-    end)
+    })
 end
+
+-- ====== INFO TAB ======
+local InfoTab = Window:Tab({
+    Title = "Info",
+    Icon = "badge-info",
+})
+
+InfoTab:Paragraph({
+    Title = "About",
+    Desc = "Advanced Hub - Built with WindUI\n\nFeatures:\n• Player control (speed, jump, fly)\n• Combat (auto farm, range)\n• Aimbot with priority\n• ESP & Chams\n• FOV adjustment\n• Custom backgrounds",
+    Buttons = {
+        {
+            Title = "GitHub",
+            Callback = function()
+                setclipboard("https://github.com/Footagesus/WindUI")
+                WindUI:Notify({ Title = "Copied!", Content = "GitHub link copied", Duration = 2 })
+            end,
+        },
+        {
+            Title = "Documentation",
+            Variant = "Secondary",
+            Callback = function()
+                print("Documentation requested")
+            end,
+        },
+    },
+})
+
+local HStack = InfoTab:HStack()
+local VStackLeft = HStack:VStack()
+local VStackRight = HStack:VStack()
+
+VStackLeft:Button({
+    Title = "Reload UI",
+    Justify = "Center",
+    Icon = "refresh-ccw",
+    IconAlign = "Left",
+    Color = Color3.fromHex("#F44732"),
+    Callback = function()
+        print("Reloading UI...")
+        -- You can add reload logic here
+    end,
+})
+
+VStackRight:Button({
+    Title = "Rejoin Place",
+    Justify = "Center",
+    Icon = "log-out",
+    IconAlign = "Left",
+    Color = Color3.fromHex("#f4b332"),
+    Callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId)
+    end,
+})
+
+-- ============================================================
+--  AUTO-SAVE (optional)
+-- ============================================================
+local ConfigManager = Window.ConfigManager
+if ConfigManager then
+    ConfigManager:Init(Window)
+    -- Register flags here if needed
+end
+
+-- ============================================================
+--  STARTUP NOTIFICATION
+-- ============================================================
+WindUI:Notify({
+    Title = "Hub Loaded",
+    Content = "Customize your background in the Settings tab!",
+    Icon = "sparkles",
+    Duration = 5
+})
+
+print("✅ WindUI Hub loaded successfully!")
