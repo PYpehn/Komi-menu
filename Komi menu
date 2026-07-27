@@ -1,5 +1,5 @@
 --[[
-    WindUI Hub - Fixed Empty Tabs
+    WindUI Hub - Full Version (with ImageLabel Background)
 ]]
 
 local cloneref = (cloneref or clonereference or function(instance)
@@ -27,9 +27,9 @@ do
 end
 
 -- ============================================================
---  DEFAULT BACKGROUND
+--  DEFAULT BACKGROUND (ImageLabel method)
 -- ============================================================
-local DEFAULT_BG = "https://i.imgur.com/8Km9tLL.jpeg"
+local DEFAULT_BG = "https://i.imgur.com/8Km9tLL.jpeg"  -- or rbxassetid://
 
 -- ============================================================
 --  CREATE WINDOW
@@ -40,14 +40,45 @@ local Window = WindUI:CreateWindow({
     Icon = "solar:wind-bold",
     Theme = "Dark",
     ToggleKey = Enum.KeyCode.F,
+    -- Built-in background (optional)
     Background = DEFAULT_BG,
     BackgroundTransparency = 0.2,
 })
 
 Window:Tag({
-    Title = "v2.1",
+    Title = "v2.2",
     Color = "ElementBackground",
 })
+
+-- ============================================================
+--  MANUAL BACKGROUND (ImageLabel) – WORKS IN WINDUI
+-- ============================================================
+local function SetManualBackground(url, transparency)
+    -- Find the main frame (varies by WindUI version)
+    local mainFrame = Window.Holder or Window.Main or Window
+    if not mainFrame then return end
+
+    -- Remove old manual background if any
+    local oldBg = mainFrame:FindFirstChild("CustomBackground")
+    if oldBg then oldBg:Destroy() end
+
+    -- Create new ImageLabel
+    local bgImage = Instance.new("ImageLabel")
+    bgImage.Name = "CustomBackground"
+    bgImage.Image = url
+    bgImage.ScaleType = Enum.ScaleType.Crop  -- or Slice/Stretch
+    bgImage.Size = UDim2.new(1, 0, 1, 0)
+    bgImage.BackgroundTransparency = 1
+    bgImage.ImageTransparency = transparency or 0.2
+    bgImage.ZIndex = -1  -- behind everything
+    bgImage.Parent = mainFrame
+
+    -- Ensure it stays behind (adjust if needed)
+    bgImage:SetAttribute("ManualBG", true)
+end
+
+-- Apply initial background using the manual method
+SetManualBackground(DEFAULT_BG, 0.2)
 
 -- ============================================================
 --  CREATE TABS (explicit references)
@@ -59,12 +90,8 @@ local MainTab = Window:Tab({
     Icon = "warehouse",
 })
 
-MainTab:Section({
-    Title = "Player Settings",
-    Icon = "user",
-})
+MainTab:Section({ Title = "Player Settings", Icon = "user" })
 
--- Walk Speed
 MainTab:Slider({
     Title = "Walk Speed",
     Desc = "Adjust movement speed",
@@ -79,7 +106,6 @@ MainTab:Slider({
     end
 })
 
--- Jump Power
 MainTab:Slider({
     Title = "Jump Power",
     Desc = "Adjust jump height",
@@ -130,10 +156,7 @@ local ExploitsTab = Window:Tab({
     Icon = "terminal",
 })
 
-ExploitsTab:Section({
-    Title = "Combat",
-    Icon = "sword",
-})
+ExploitsTab:Section({ Title = "Combat", Icon = "sword" })
 
 ExploitsTab:Toggle({
     Title = "Auto Farm",
@@ -156,9 +179,7 @@ ExploitsTab:Slider({
 
 ExploitsTab:Divider()
 
-ExploitsTab:Section({
-    Title = "Movement",
-})
+ExploitsTab:Section({ Title = "Movement" })
 
 ExploitsTab:Toggle({
     Title = "Noclip",
@@ -176,9 +197,7 @@ local AimbotTab = Window:Tab({
     Icon = "locate-fixed",
 })
 
-AimbotTab:Section({
-    Title = "Aimbot Settings",
-})
+AimbotTab:Section({ Title = "Aimbot Settings" })
 
 AimbotTab:Toggle({
     Title = "Enable Aimbot",
@@ -214,9 +233,7 @@ local EspTab = Window:Tab({
     Icon = "eye",
 })
 
-EspTab:Section({
-    Title = "Visuals",
-})
+EspTab:Section({ Title = "Visuals" })
 
 EspTab:Toggle({
     Title = "ESP",
@@ -263,10 +280,7 @@ local TeleportTab = Window:Tab({
     Icon = "map-pin",
 })
 
-TeleportTab:Section({
-    Title = "Location Teleport",
-    Icon = "map",
-})
+TeleportTab:Section({ Title = "Location Teleport", Icon = "map" })
 
 local Locations = {
     { Name = "Spawn Point", Position = Vector3.new(0, 0, 0) },
@@ -316,10 +330,7 @@ TeleportTab:Button({
 
 TeleportTab:Divider()
 
-TeleportTab:Section({
-    Title = "Quick Teleport",
-    Icon = "zap",
-})
+TeleportTab:Section({ Title = "Quick Teleport", Icon = "zap" })
 
 for _, loc in ipairs(Locations) do
     TeleportTab:Button({
@@ -345,10 +356,7 @@ local MiscTab = Window:Tab({
     Icon = "settings",
 })
 
-MiscTab:Section({
-    Title = "Extra Utilities",
-    Icon = "tool",
-})
+MiscTab:Section({ Title = "Extra Utilities", Icon = "tool" })
 
 MiscTab:Toggle({
     Title = "God Mode",
@@ -390,9 +398,7 @@ MiscTab:Toggle({
 
 MiscTab:Divider()
 
-MiscTab:Section({
-    Title = "Notifications",
-})
+MiscTab:Section({ Title = "Notifications" })
 
 MiscTab:Button({
     Title = "Test Notification",
@@ -413,10 +419,7 @@ local StatsTab = Window:Tab({
     Icon = "bar-chart-3",
 })
 
-StatsTab:Section({
-    Title = "Live Player Stats",
-    Icon = "activity",
-})
+StatsTab:Section({ Title = "Live Player Stats", Icon = "activity" })
 
 local statsPara = StatsTab:Paragraph({
     Title = "Player Information",
@@ -453,11 +456,9 @@ local SettingsTab = Window:Tab({
     Icon = "settings",
 })
 
-SettingsTab:Section({
-    Title = "Background Customization",
-    Icon = "image",
-})
+SettingsTab:Section({ Title = "Background Customization", Icon = "image" })
 
+-- Input for background URL
 local bgInput = SettingsTab:Input({
     Title = "Background URL",
     Desc = "Paste image URL or Roblox asset ID",
@@ -467,6 +468,7 @@ local bgInput = SettingsTab:Input({
     Callback = function(text) end
 })
 
+-- Apply button (manual ImageLabel method)
 SettingsTab:Button({
     Title = "Apply Background",
     Icon = "check",
@@ -475,8 +477,11 @@ SettingsTab:Button({
     Callback = function()
         local url = bgInput:GetValue()
         if url and url ~= "" then
+            -- Use manual method
             local success, err = pcall(function()
-                Window:SetBackgroundImage(url)
+                SetManualBackground(url, 0.2)
+                -- Also update built-in background if available
+                pcall(function() Window:SetBackgroundImage(url) end)
             end)
             if success then
                 WindUI:Notify({ Title = "Background Updated", Content = "New background applied!", Icon = "check", Duration = 2 })
@@ -487,6 +492,7 @@ SettingsTab:Button({
     end
 })
 
+-- Transparency slider for manual background
 SettingsTab:Slider({
     Title = "Background Transparency",
     Desc = "0 = opaque, 1 = fully transparent",
@@ -494,18 +500,22 @@ SettingsTab:Slider({
     Value = { Min = 0, Max = 1, Default = 0.2 },
     Step = 0.05,
     Callback = function(value)
-        pcall(function()
-            Window:SetBackgroundImageTransparency(value)
-        end)
+        -- Update manual background if exists
+        local mainFrame = Window.Holder or Window.Main or Window
+        if mainFrame then
+            local bg = mainFrame:FindFirstChild("CustomBackground")
+            if bg then
+                bg.ImageTransparency = value
+            end
+        end
+        -- Also update built-in
+        pcall(function() Window:SetBackgroundImageTransparency(value) end)
     end
 })
 
 SettingsTab:Divider()
 
-SettingsTab:Section({
-    Title = "Preset Backgrounds",
-    Icon = "palette",
-})
+SettingsTab:Section({ Title = "Preset Backgrounds", Icon = "palette" })
 
 local Presets = {
     { Name = "Space", URL = "https://i.imgur.com/8Km9tLL.jpeg" },
@@ -523,7 +533,8 @@ for _, preset in ipairs(Presets) do
         IconAlign = "Left",
         Callback = function()
             pcall(function()
-                Window:SetBackgroundImage(preset.URL)
+                SetManualBackground(preset.URL, 0.2)
+                pcall(function() Window:SetBackgroundImage(preset.URL) end)
                 bgInput:SetValue(preset.URL)
                 WindUI:Notify({ Title = "Preset Applied", Content = preset.Name .. " background set!", Icon = "check", Duration = 2 })
             end)
@@ -539,7 +550,7 @@ local InfoTab = Window:Tab({
 
 InfoTab:Paragraph({
     Title = "About",
-    Desc = "Advanced Hub - Built with WindUI\n\nFeatures:\n• Player control (speed, jump, fly)\n• Combat (auto farm, range)\n• Aimbot with priority\n• ESP & Chams\n• FOV adjustment\n• Teleport to locations\n• Misc utilities (God Mode, Stamina)\n• Live stats display\n• Custom backgrounds",
+    Desc = "Advanced Hub - Built with WindUI\n\nFeatures:\n• Player control (speed, jump, fly)\n• Combat (auto farm, range)\n• Aimbot with priority\n• ESP & Chams\n• FOV adjustment\n• Teleport to locations\n• Misc utilities (God Mode, Stamina)\n• Live stats display\n• Custom backgrounds (ImageLabel method)",
     Buttons = {
         {
             Title = "GitHub",
@@ -611,11 +622,27 @@ if ConfigManager then
 end
 
 -- ============================================================
+--  KEYBIND (already set to F, but we can add more)
+-- ============================================================
+-- Add a custom keybind to toggle Fly Mode (optional)
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        -- Toggle fly mode (example)
+        local flyToggle = MainTab:GetElement("flyMode")
+        if flyToggle then
+            flyToggle:Toggle()
+        end
+    end
+end)
+
+-- ============================================================
 --  STARTUP NOTIFICATION
 -- ============================================================
 WindUI:Notify({
     Title = "Hub Loaded",
-    Content = "All tabs should now have content! Press F to toggle.",
+    Content = "All features ready! Press F to toggle fly mode.",
     Icon = "sparkles",
     Duration = 5
 })
