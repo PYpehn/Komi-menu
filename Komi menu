@@ -1,1 +1,587 @@
+--[[
+    WindUI Hub - Working Version (Window:Section pattern)
+]]
 
+local cloneref = (cloneref or clonereference or function(instance)
+    return instance
+end)
+local ReplicatedStorage = cloneref(game:GetService("ReplicatedStorage"))
+local RunService = cloneref(game:GetService("RunService"))
+
+local WindUI
+
+do
+    local ok, result = pcall(function()
+        return require("./src/Init")
+    end)
+
+    if ok then
+        WindUI = result
+    else
+        if RunService:IsStudio() or not writefile then
+            WindUI = require(ReplicatedStorage:WaitForChild("WindUI"):WaitForChild("Init"))
+        else
+            WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+        end
+    end
+end
+
+-- ============================================================
+--  DEFAULT BACKGROUND (ImageLabel method)
+-- ============================================================
+local DEFAULT_BG = "https://i.imgur.com/8Km9tLL.jpeg"  -- Replace with your own
+
+-- ============================================================
+--  CREATE WINDOW
+-- ============================================================
+local Window = WindUI:CreateWindow({
+    Title = "Advanced Hub",
+    Author = "by .ftgs",
+    Icon = "solar:wind-bold",
+    Theme = "Dark",
+    ToggleKey = Enum.KeyCode.F,
+})
+
+Window:Tag({ Title = "v2.2", Color = "ElementBackground" })
+
+-- ============================================================
+--  MANUAL BACKGROUND (ImageLabel) - WORKS IN WINDUI
+-- ============================================================
+local function SetManualBackground(url, transparency)
+    local mainFrame = Window.Holder or Window.Main or Window
+    if not mainFrame then return end
+
+    local oldBg = mainFrame:FindFirstChild("CustomBackground")
+    if oldBg then oldBg:Destroy() end
+
+    local bgImage = Instance.new("ImageLabel")
+    bgImage.Name = "CustomBackground"
+    bgImage.Image = url
+    bgImage.ScaleType = Enum.ScaleType.Crop
+    bgImage.Size = UDim2.new(1, 0, 1, 0)
+    bgImage.BackgroundTransparency = 1
+    bgImage.ImageTransparency = transparency or 0.2
+    bgImage.ZIndex = -1
+    bgImage.Parent = mainFrame
+end
+
+SetManualBackground(DEFAULT_BG, 0.2)
+
+-- ============================================================
+--  CREATE TABS & SECTIONS (Window:Section pattern)
+-- ============================================================
+
+-- ====== MAIN TAB ======
+Window:Tab({ Title = "Main", Icon = "warehouse" })
+Window:Section({ Title = "Player Settings", Icon = "user" })
+
+Window:Slider({
+    Title = "Walk Speed",
+    Desc = "Adjust movement speed",
+    Flag = "walkSpeed",
+    Value = { Min = 16, Max = 100, Default = 50 },
+    Callback = function(value)
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum then hum.WalkSpeed = value end
+        end
+    end
+})
+
+Window:Slider({
+    Title = "Jump Power",
+    Desc = "Adjust jump height",
+    Flag = "jumpPower",
+    Value = { Min = 50, Max = 200, Default = 50 },
+    Callback = function(value)
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum then hum.JumpPower = value end
+        end
+    end
+})
+
+Window:Divider()
+
+Window:Toggle({
+    Title = "Infinite Jump",
+    Desc = "Jump in mid-air",
+    Flag = "infiniteJump",
+    Value = false,
+    Callback = function(state)
+        _G.InfiniteJump = state
+    end
+})
+
+Window:Toggle({
+    Title = "Fly Mode",
+    Desc = "Enable flight",
+    Flag = "flyMode",
+    Value = false,
+    Callback = function(state)
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum then
+                hum.PlatformStand = state
+                local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                if root then root.Anchored = state end
+            end
+        end
+    end
+})
+
+-- ====== EXPLOITS TAB ======
+Window:Tab({ Title = "Exploits", Icon = "terminal" })
+Window:Section({ Title = "Combat", Icon = "sword" })
+
+Window:Toggle({
+    Title = "Auto Farm",
+    Desc = "Automatically attack enemies",
+    Flag = "autoFarm",
+    Value = false,
+    Callback = function(state)
+        _G.AutoFarm = state
+    end
+})
+
+Window:Slider({
+    Title = "Attack Range",
+    Flag = "attackRange",
+    Value = { Min = 5, Max = 50, Default = 10 },
+    Callback = function(value)
+        _G.AttackRange = value
+    end
+})
+
+Window:Divider()
+Window:Section({ Title = "Movement" })
+
+Window:Toggle({
+    Title = "Noclip",
+    Desc = "Walk through walls",
+    Flag = "noclip",
+    Value = false,
+    Callback = function(state)
+        _G.Noclip = state
+    end
+})
+
+-- ====== AIMBOT TAB ======
+Window:Tab({ Title = "Aimbot", Icon = "locate-fixed" })
+Window:Section({ Title = "Aimbot Settings" })
+
+Window:Toggle({
+    Title = "Enable Aimbot",
+    Flag = "aimbot",
+    Value = false,
+    Callback = function(state)
+        _G.Aimbot = state
+    end
+})
+
+Window:Slider({
+    Title = "Smoothness",
+    Flag = "aimSmoothness",
+    Value = { Min = 1, Max = 100, Default = 50 },
+    Callback = function(value)
+        _G.AimSmoothness = value
+    end
+})
+
+Window:Dropdown({
+    Title = "Target Priority",
+    Flag = "aimPriority",
+    Values = { "Closest", "Lowest Health", "Highest Health" },
+    Value = "Closest",
+    Callback = function(option)
+        _G.AimPriority = option
+    end
+})
+
+-- ====== ESP TAB ======
+Window:Tab({ Title = "ESP", Icon = "eye" })
+Window:Section({ Title = "Visuals" })
+
+Window:Toggle({
+    Title = "ESP",
+    Flag = "esp",
+    Value = false,
+    Callback = function(state)
+        _G.ESP = state
+    end
+})
+
+Window:Dropdown({
+    Title = "ESP Color",
+    Flag = "espColor",
+    Values = { "Red", "Blue", "Green", "Yellow", "White", "Pink", "Cyan" },
+    Value = "Red",
+    Callback = function(option)
+        _G.ESPColor = option
+    end
+})
+
+Window:Toggle({
+    Title = "Chams",
+    Flag = "chams",
+    Value = false,
+    Callback = function(state)
+        _G.Chams = state
+    end
+})
+
+Window:Divider()
+
+Window:Slider({
+    Title = "Field of View",
+    Flag = "fov",
+    Value = { Min = 30, Max = 120, Default = 70 },
+    Callback = function(value)
+        game.Workspace.CurrentCamera.FieldOfView = value
+    end
+})
+
+-- ====== TELEPORT TAB ======
+Window:Tab({ Title = "Teleport", Icon = "map-pin" })
+Window:Section({ Title = "Location Teleport", Icon = "map" })
+
+local Locations = {
+    { Name = "Spawn Point", Position = Vector3.new(0, 0, 0) },
+    { Name = "Lobby", Position = Vector3.new(100, 10, 50) },
+    { Name = "Arena", Position = Vector3.new(-200, 20, -150) },
+    { Name = "Shop", Position = Vector3.new(300, 5, -100) },
+    { Name = "Boss Area", Position = Vector3.new(500, 50, 200) },
+}
+
+local locDropdown = Window:Dropdown({
+    Title = "Select Location",
+    Flag = "teleportLocation",
+    Values = {},
+    Value = "",
+    Callback = function(option) end
+})
+
+local locNames = {}
+for _, loc in ipairs(Locations) do
+    table.insert(locNames, loc.Name)
+end
+locDropdown:Refresh(locNames)
+locDropdown:Select(locNames[1] or "")
+
+Window:Button({
+    Title = "Teleport Now",
+    Icon = "send",
+    IconAlign = "Left",
+    Color = Color3.fromHex("#30ff6a"),
+    Callback = function()
+        local selected = locDropdown:GetValue()
+        for _, loc in ipairs(Locations) do
+            if loc.Name == selected then
+                local plr = game.Players.LocalPlayer
+                if plr and plr.Character then
+                    local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.CFrame = CFrame.new(loc.Position)
+                        WindUI:Notify({ Title = "Teleported", Content = "Moved to " .. loc.Name, Icon = "check", Duration = 2 })
+                    end
+                end
+                break
+            end
+        end
+    end
+})
+
+Window:Divider()
+Window:Section({ Title = "Quick Teleport", Icon = "zap" })
+
+for _, loc in ipairs(Locations) do
+    Window:Button({
+        Title = loc.Name,
+        Icon = "map-pin",
+        IconAlign = "Left",
+        Callback = function()
+            local plr = game.Players.LocalPlayer
+            if plr and plr.Character then
+                local root = plr.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    root.CFrame = CFrame.new(loc.Position)
+                    WindUI:Notify({ Title = "Teleported", Content = "Moved to " .. loc.Name, Icon = "check", Duration = 2 })
+                end
+            end
+        end
+    })
+end
+
+-- ====== MISC TAB ======
+Window:Tab({ Title = "Misc", Icon = "settings" })
+Window:Section({ Title = "Extra Utilities", Icon = "tool" })
+
+Window:Toggle({
+    Title = "God Mode",
+    Desc = "Become invincible",
+    Flag = "godMode",
+    Value = false,
+    Callback = function(state)
+        _G.GodMode = state
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            if hum then
+                hum.MaxHealth = state and math.huge or 100
+                hum.Health = state and math.huge or 100
+            end
+        end
+    end
+})
+
+Window:Toggle({
+    Title = "Infinite Stamina",
+    Desc = "Never run out of stamina",
+    Flag = "infiniteStamina",
+    Value = false,
+    Callback = function(state)
+        _G.InfiniteStamina = state
+    end
+})
+
+Window:Toggle({
+    Title = "Speed Boost",
+    Desc = "Multiply your speed by 1.5x",
+    Flag = "speedBoost",
+    Value = false,
+    Callback = function(state)
+        _G.SpeedBoost = state
+    end
+})
+
+Window:Divider()
+Window:Section({ Title = "Notifications" })
+
+Window:Button({
+    Title = "Test Notification",
+    Icon = "bell",
+    Callback = function()
+        WindUI:Notify({
+            Title = "Test",
+            Content = "This is a test notification!",
+            Icon = "bell",
+            Duration = 3
+        })
+    end
+})
+
+-- ====== STATS TAB ======
+Window:Tab({ Title = "Stats", Icon = "bar-chart-3" })
+Window:Section({ Title = "Live Player Stats", Icon = "activity" })
+
+local statsPara = Window:Paragraph({
+    Title = "Player Information",
+    Desc = "Loading...",
+    Image = "user",
+    ImageSize = 20,
+    Color = "White",
+})
+
+task.spawn(function()
+    while true do
+        local plr = game.Players.LocalPlayer
+        if plr and plr.Character then
+            local hum = plr.Character:FindFirstChild("Humanoid")
+            local root = plr.Character:FindFirstChild("HumanoidRootPart")
+            if hum and root then
+                local health = math.floor(hum.Health)
+                local maxHealth = math.floor(hum.MaxHealth)
+                local speed = math.floor(hum.WalkSpeed)
+                local pos = root.Position
+                statsPara:SetDesc(string.format(
+                    "Health: %d / %d\nWalk Speed: %d\nPosition: (%.1f, %.1f, %.1f)",
+                    health, maxHealth, speed, pos.X, pos.Y, pos.Z
+                ))
+            end
+        end
+        task.wait(1)
+    end
+end)
+
+-- ====== SETTINGS TAB ======
+Window:Tab({ Title = "Settings", Icon = "settings" })
+Window:Section({ Title = "Background Customization", Icon = "image" })
+
+local bgInput = Window:Input({
+    Title = "Background URL",
+    Desc = "Paste image URL or Roblox asset ID",
+    Icon = "link",
+    Placeholder = "https://example.com/image.png",
+    Value = DEFAULT_BG,
+    Callback = function(text) end
+})
+
+Window:Button({
+    Title = "Apply Background",
+    Icon = "check",
+    IconAlign = "Left",
+    Color = Color3.fromHex("#315dff"),
+    Callback = function()
+        local url = bgInput:GetValue()
+        if url and url ~= "" then
+            local success, err = pcall(function()
+                SetManualBackground(url, 0.2)
+                pcall(function() Window:SetBackgroundImage(url) end)
+            end)
+            if success then
+                WindUI:Notify({ Title = "Background Updated", Content = "New background applied!", Icon = "check", Duration = 2 })
+            else
+                WindUI:Notify({ Title = "Error", Content = "Failed to set background: " .. tostring(err), Icon = "x", Duration = 3 })
+            end
+        end
+    end
+})
+
+Window:Slider({
+    Title = "Background Transparency",
+    Desc = "0 = opaque, 1 = fully transparent",
+    Flag = "bgTransparency",
+    Value = { Min = 0, Max = 1, Default = 0.2 },
+    Step = 0.05,
+    Callback = function(value)
+        local mainFrame = Window.Holder or Window.Main or Window
+        if mainFrame then
+            local bg = mainFrame:FindFirstChild("CustomBackground")
+            if bg then bg.ImageTransparency = value end
+        end
+        pcall(function() Window:SetBackgroundImageTransparency(value) end)
+    end
+})
+
+Window:Divider()
+Window:Section({ Title = "Preset Backgrounds", Icon = "palette" })
+
+local Presets = {
+    { Name = "Space", URL = "https://i.imgur.com/8Km9tLL.jpeg" },
+    { Name = "Neon City", URL = "https://i.imgur.com/ZNz3XQx.jpeg" },
+    { Name = "Dark Gradient", URL = "rbxassetid://10618928818" },
+    { Name = "Cyberpunk", URL = "https://i.imgur.com/1J5Qk2v.jpeg" },
+    { Name = "Sunset", URL = "https://i.imgur.com/3r8nHr7.jpeg" },
+    { Name = "Abstract", URL = "https://i.imgur.com/2BqYlQk.jpeg" },
+}
+
+for _, preset in ipairs(Presets) do
+    Window:Button({
+        Title = preset.Name,
+        Icon = "image",
+        IconAlign = "Left",
+        Callback = function()
+            pcall(function()
+                SetManualBackground(preset.URL, 0.2)
+                pcall(function() Window:SetBackgroundImage(preset.URL) end)
+                bgInput:SetValue(preset.URL)
+                WindUI:Notify({ Title = "Preset Applied", Content = preset.Name .. " background set!", Icon = "check", Duration = 2 })
+            end)
+        end
+    })
+end
+
+-- ====== INFO TAB ======
+Window:Tab({ Title = "Info", Icon = "badge-info" })
+Window:Paragraph({
+    Title = "About",
+    Desc = "Advanced Hub - Built with WindUI\n\nFeatures:\n• Player control (speed, jump, fly)\n• Combat (auto farm, range)\n• Aimbot with priority\n• ESP & Chams\n• FOV adjustment\n• Teleport to locations\n• Misc utilities (God Mode, Stamina)\n• Live stats display\n• Custom backgrounds (ImageLabel method)",
+    Buttons = {
+        {
+            Title = "GitHub",
+            Callback = function()
+                setclipboard("https://github.com/Footagesus/WindUI")
+                WindUI:Notify({ Title = "Copied!", Content = "GitHub link copied", Duration = 2 })
+            end,
+        },
+        {
+            Title = "Documentation",
+            Variant = "Secondary",
+            Callback = function()
+                print("Documentation requested")
+            end,
+        },
+    },
+})
+
+local HStack = Window:HStack()
+local VStackLeft = HStack:VStack()
+local VStackRight = HStack:VStack()
+
+VStackLeft:Button({
+    Title = "Reload UI",
+    Justify = "Center",
+    Icon = "refresh-ccw",
+    IconAlign = "Left",
+    Color = Color3.fromHex("#F44732"),
+    Callback = function()
+        print("Reloading UI...")
+    end,
+})
+
+VStackRight:Button({
+    Title = "Rejoin Place",
+    Justify = "Center",
+    Icon = "log-out",
+    IconAlign = "Left",
+    Color = Color3.fromHex("#f4b332"),
+    Callback = function()
+        game:GetService("TeleportService"):Teleport(game.PlaceId)
+    end,
+})
+
+-- ============================================================
+--  AUTO-SAVE CONFIG
+-- ============================================================
+local ConfigManager = Window.ConfigManager
+if ConfigManager then
+    ConfigManager:Init(Window)
+    ConfigManager:RegisterFlag("walkSpeed")
+    ConfigManager:RegisterFlag("jumpPower")
+    ConfigManager:RegisterFlag("infiniteJump")
+    ConfigManager:RegisterFlag("flyMode")
+    ConfigManager:RegisterFlag("autoFarm")
+    ConfigManager:RegisterFlag("attackRange")
+    ConfigManager:RegisterFlag("noclip")
+    ConfigManager:RegisterFlag("aimbot")
+    ConfigManager:RegisterFlag("aimSmoothness")
+    ConfigManager:RegisterFlag("aimPriority")
+    ConfigManager:RegisterFlag("esp")
+    ConfigManager:RegisterFlag("espColor")
+    ConfigManager:RegisterFlag("chams")
+    ConfigManager:RegisterFlag("fov")
+    ConfigManager:RegisterFlag("godMode")
+    ConfigManager:RegisterFlag("infiniteStamina")
+    ConfigManager:RegisterFlag("speedBoost")
+    ConfigManager:RegisterFlag("bgTransparency")
+end
+
+-- ============================================================
+--  KEYBIND (press F to toggle fly mode)
+-- ============================================================
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.F then
+        -- Toggle fly mode using the flag
+        local flag = WindUI:GetFlag("flyMode")
+        if flag ~= nil then
+            WindUI:SetFlag("flyMode", not flag)
+        end
+    end
+end)
+
+-- ============================================================
+--  STARTUP NOTIFICATION
+-- ============================================================
+WindUI:Notify({
+    Title = "Hub Loaded",
+    Content = "All tabs have content! Press F to toggle fly.",
+    Icon = "sparkles",
+    Duration = 5
+})
+
+print("✅ WindUI Hub loaded successfully!")
