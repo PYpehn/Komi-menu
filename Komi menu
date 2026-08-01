@@ -4,11 +4,13 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
-local Camera = Workspace.CurrentCamera
+
+-- Detect mobile (touch enabled, no physical keyboard)
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 local loadingGui = Instance.new("ScreenGui")
 loadingGui.Name = "LoadingScreen"
@@ -95,370 +97,236 @@ local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footag
 if not WindUI then return end
 
 local DEFAULT_BG = "https://imgs.search.brave.com/PDlgPLyWgsl2LX1wyUldvBClHpq7m892iXzcEE9AELc/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2E3LzRj/L2M5L2E3NGNjOTM1/MTAyMWNiNzg2NGI0/NTg4MzE0YTU1MjM5/LmpwZw"
+local LOGO_URL = "https://imgs.search.brave.com/gMMHjl8dlOO2h8L87rQrtupd4vcbZ2A22jtoJ5ajOHw/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jZG4u/cGZwcy5nZy9wZnBzLzU3MDQta29taS5w/bmc"
 
+-- Mobile: no toggle key (UI always visible), PC: toggle with F
 local Window = WindUI:CreateWindow({
     Title = "Advanced Hub",
     Author = "Reworked by Nothing",
     Icon = "solar:wind-bold",
     Theme = "Dark",
-    ToggleKey = Enum.KeyCode.F,
+    ToggleKey = isMobile and nil or Enum.KeyCode.F,   -- nil = always shown on mobile
     Background = DEFAULT_BG,
     BackgroundTransparency = 0.5,
 })
 
 -- ============================================================
---  CHANGE BACKGROUND FUNCTION (FIXED)
+--  BACKGROUND CHANGE UTILITY
 -- ============================================================
-local function ChangeBackground(url)
-    -- WindUI creates the background in the ScreenGui
-    -- Find it by searching all descendants
-    local found = false
+function ChangeBackground(url)
     for _, gui in ipairs(game:GetService("CoreGui"):GetChildren()) do
-        if gui:IsA("ScreenGui") and gui.Name ~= "LoadingScreen" then
+        if gui:IsA("ScreenGui") then
             for _, obj in ipairs(gui:GetDescendants()) do
-                if obj:IsA("ImageLabel") then
-                    -- Check if it looks like the background (large, named or has the current bg)
-                    if obj.Size == UDim2.new(1, 0, 1, 0) or obj.Name == "Background" or obj.Image == DEFAULT_BG then
-                        obj.Image = url
-                        found = true
-                    end
+                if obj:IsA("ImageLabel") and obj.Size == UDim2.new(1, 0, 1, 0) then
+                    obj.Image = url
+                    return true
                 end
             end
         end
     end
-    return found
+    return false
 end
 
 -- ============================================================
---  VARIABLES
+--  GLOBAL SETTINGS
 -- ============================================================
-local sprayEnabled = false
-local sprayConnection = nil
-local drawColor = Color3.fromRGB(255, 0, 0)
-local autoDrawing = false
-local autoDrawThread = nil
-local imageOverlay = nil
+getgenv().autoPickupEnabled = false
+getgenv().pickupKey = Enum.KeyCode.E
+getgenv().pickupDelay = 100
 
--- 64 Colors
-local colors = {
-    {Name = "Red", Color = Color3.fromRGB(255, 0, 0)},
-    {Name = "Blue", Color = Color3.fromRGB(0, 0, 255)},
-    {Name = "Green", Color = Color3.fromRGB(0, 255, 0)},
-    {Name = "Yellow", Color = Color3.fromRGB(255, 255, 0)},
-    {Name = "Purple", Color = Color3.fromRGB(128, 0, 128)},
-    {Name = "Orange", Color = Color3.fromRGB(255, 165, 0)},
-    {Name = "Pink", Color = Color3.fromRGB(255, 192, 203)},
-    {Name = "Cyan", Color = Color3.fromRGB(0, 255, 255)},
-    {Name = "White", Color = Color3.fromRGB(255, 255, 255)},
-    {Name = "Black", Color = Color3.fromRGB(0, 0, 0)},
-    {Name = "Gray", Color = Color3.fromRGB(128, 128, 128)},
-    {Name = "Brown", Color = Color3.fromRGB(139, 69, 19)},
-    {Name = "Lime", Color = Color3.fromRGB(0, 255, 0)},
-    {Name = "Teal", Color = Color3.fromRGB(0, 128, 128)},
-    {Name = "Indigo", Color = Color3.fromRGB(75, 0, 130)},
-    {Name = "Violet", Color = Color3.fromRGB(148, 0, 211)},
-    {Name = "Gold", Color = Color3.fromRGB(255, 215, 0)},
-    {Name = "Silver", Color = Color3.fromRGB(192, 192, 192)},
-    {Name = "Maroon", Color = Color3.fromRGB(128, 0, 0)},
-    {Name = "Navy", Color = Color3.fromRGB(0, 0, 128)},
-    {Name = "Coral", Color = Color3.fromRGB(255, 127, 80)},
-    {Name = "Crimson", Color = Color3.fromRGB(220, 20, 60)},
-    {Name = "Salmon", Color = Color3.fromRGB(250, 128, 114)},
-    {Name = "Turquoise", Color = Color3.fromRGB(64, 224, 208)},
-    {Name = "Sky Blue", Color = Color3.fromRGB(135, 206, 235)},
-    {Name = "Hot Pink", Color = Color3.fromRGB(255, 105, 180)},
-    {Name = "Forest Green", Color = Color3.fromRGB(34, 139, 34)},
-    {Name = "Tomato", Color = Color3.fromRGB(255, 99, 71)},
-    {Name = "Orchid", Color = Color3.fromRGB(218, 112, 214)},
-    {Name = "Chocolate", Color = Color3.fromRGB(210, 105, 30)},
-    {Name = "Tan", Color = Color3.fromRGB(210, 180, 140)},
-    {Name = "Plum", Color = Color3.fromRGB(221, 160, 221)},
-    {Name = "Dark Salmon", Color = Color3.fromRGB(233, 150, 122)},
-    {Name = "Light Coral", Color = Color3.fromRGB(240, 128, 128)},
-    {Name = "Indian Red", Color = Color3.fromRGB(205, 92, 92)},
-    {Name = "Firebrick", Color = Color3.fromRGB(178, 34, 34)},
-    {Name = "Dark Red", Color = Color3.fromRGB(139, 0, 0)},
-    {Name = "Medium Blue", Color = Color3.fromRGB(0, 0, 205)},
-    {Name = "Dark Blue", Color = Color3.fromRGB(0, 0, 139)},
-    {Name = "Midnight Blue", Color = Color3.fromRGB(25, 25, 112)},
-    {Name = "Steel Blue", Color = Color3.fromRGB(70, 130, 180)},
-    {Name = "Dodger Blue", Color = Color3.fromRGB(30, 144, 255)},
-    {Name = "Deep Sky Blue", Color = Color3.fromRGB(0, 191, 255)},
-    {Name = "Spring Green", Color = Color3.fromRGB(0, 250, 154)},
-    {Name = "Sea Green", Color = Color3.fromRGB(46, 139, 87)},
-    {Name = "Dark Green", Color = Color3.fromRGB(0, 100, 0)},
-    {Name = "Saddle Brown", Color = Color3.fromRGB(139, 69, 19)},
-    {Name = "Sienna", Color = Color3.fromRGB(160, 82, 45)},
-    {Name = "Peru", Color = Color3.fromRGB(205, 133, 63)},
-    {Name = "Dark Orange", Color = Color3.fromRGB(255, 140, 0)},
-    {Name = "Orange Red", Color = Color3.fromRGB(255, 69, 0)},
-    {Name = "Lavender", Color = Color3.fromRGB(230, 230, 250)},
-    {Name = "Mint", Color = Color3.fromRGB(189, 252, 201)},
-    {Name = "Peach", Color = Color3.fromRGB(255, 218, 185)},
-    {Name = "Khaki", Color = Color3.fromRGB(240, 230, 140)},
-    {Name = "Azure", Color = Color3.fromRGB(240, 255, 255)},
-    {Name = "Beige", Color = Color3.fromRGB(245, 245, 220)},
-    {Name = "Moccasin", Color = Color3.fromRGB(255, 228, 181)},
-    {Name = "Powder Blue", Color = Color3.fromRGB(176, 224, 230)},
-    {Name = "Rosy Brown", Color = Color3.fromRGB(188, 143, 143)},
-    {Name = "Olive", Color = Color3.fromRGB(128, 128, 0)},
-    {Name = "Bisque", Color = Color3.fromRGB(255, 228, 196)},
-    {Name = "Wheat", Color = Color3.fromRGB(245, 222, 179)},
-    {Name = "Thistle", Color = Color3.fromRGB(216, 191, 216)}
-}
+getgenv().autoPickerEnabled = false
+getgenv().pickerRange = 50
 
--- Preset shapes
-local presets = {
-    Heart = {{0,-30},{10,-40},{25,-25},{35,-10},{35,10},{20,35},{0,50},{-20,35},{-35,10},{-35,-10},{-25,-25},{-10,-40}},
-    Star = (function()
-        local pts = {}
-        for i = 1, 10 do
-            local a = math.rad(i * 36 - 90)
-            local r = (i % 2 == 1) and 40 or 15
-            table.insert(pts, {math.cos(a)*r, math.sin(a)*r})
-        end
-        return pts
-    end)(),
-    Circle = (function()
-        local pts = {}
-        for i = 1, 36 do
-            local a = math.rad(i * 10)
-            table.insert(pts, {math.cos(a)*35, math.sin(a)*35})
-        end
-        return pts
-    end)(),
-    Square = {{-30,-30},{30,-30},{30,30},{-30,30}},
-    Triangle = {{0,-40},{35,30},{-35,30}},
-    Diamond = {{0,-40},{30,0},{0,40},{-30,0}},
-    Cross = {{-15,-40},{15,-40},{15,-15},{40,-15},{40,15},{15,15},{15,40},{-15,40},{-15,15},{-40,15},{-40,-15},{-15,-15}}
-}
+getgenv().autoHarvestEnabled = false
+getgenv().harvestSpeed = 200
 
 -- ============================================================
---  FUNCTIONS
+--  AUTO PICKUP (E‑spam) – only works if a keyboard is present
 -- ============================================================
-local function startSpray()
-    if sprayConnection then sprayConnection:Disconnect() end
-    
-    sprayConnection = RunService.RenderStepped:Connect(function()
-        if not sprayEnabled then return end
-        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
-            local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-            if tool then
-                tool:Activate()
-            end
+coroutine.wrap(function()
+    while task.wait(0.001) do
+        if getgenv().autoPickupEnabled then
+            local key = getgenv().pickupKey
+            VirtualInputManager:SendKeyEvent(true, key, false, game)
+            task.wait(math.random(40, 70) / 1000)
+            VirtualInputManager:SendKeyEvent(false, key, false, game)
+            task.wait(getgenv().pickupDelay / 1000)
         else
-            local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-            if tool then
-                pcall(function() tool:Deactivate() end)
-            end
-        end
-    end)
-end
-
-local function stopSpray()
-    sprayEnabled = false
-    if sprayConnection then sprayConnection:Disconnect() sprayConnection = nil end
-    local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-    if tool then pcall(function() tool:Deactivate() end) end
-end
-
-local function createImageOverlay(url)
-    if imageOverlay then imageOverlay:Destroy() end
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "ImageOverlay"
-    gui.Parent = player.PlayerGui
-    gui.ResetOnSpawn = false
-    gui.DisplayOrder = 10
-    local img = Instance.new("ImageLabel")
-    img.Size = UDim2.new(1, 0, 1, 0)
-    img.BackgroundTransparency = 1
-    img.Image = url
-    img.ScaleType = Enum.ScaleType.Fit
-    img.ImageTransparency = 0.6
-    img.Parent = gui
-    imageOverlay = gui
-end
-
-local function removeImageOverlay()
-    if imageOverlay then imageOverlay:Destroy() imageOverlay = nil end
-end
-
-local function startAutoDraw(points, speed)
-    if autoDrawing then return end
-    local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-    if not tool then WindUI:Notify({Title="Auto Drawer", Content="Equip a spray tool first!", Duration=3}) return end
-    
-    autoDrawing = true
-    local cx, cy = Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2
-    
-    autoDrawThread = task.spawn(function()
-        tool:Activate()
-        for _, pt in ipairs(points) do
-            if not autoDrawing then break end
-            local ray = Camera:ScreenPointToRay(cx + pt[1], cy + pt[2])
-            Camera.CFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + ray.Direction * 10)
-            task.wait(speed or 0.02)
-        end
-        pcall(function() tool:Deactivate() end)
-        autoDrawing = false
-        WindUI:Notify({Title="Auto Drawer", Content="Done!", Duration=2})
-    end)
-end
-
-local function stopAutoDraw()
-    autoDrawing = false
-    if autoDrawThread then task.cancel(autoDrawThread) end
-    local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-    if tool then pcall(function() tool:Deactivate() end) end
-end
-
-local function traceImageFromUrl(url)
-    if autoDrawing then return end
-    local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-    if not tool then WindUI:Notify({Title="Auto Drawer", Content="Equip a spray tool first!", Duration=3}) return end
-    
-    WindUI:Notify({Title="Auto Drawer", Content="Processing image...", Duration=3})
-    
-    local temp = Instance.new("ImageLabel")
-    temp.Image = url
-    temp.Visible = false
-    temp.Parent = player.PlayerGui
-    task.wait(2)
-    local w, h = temp.ContentImageSize.X, temp.ContentImageSize.Y
-    if w == 0 or h == 0 then w, h = 256, 256 end
-    temp:Destroy()
-    
-    local pts = {}
-    local grid = 10
-    local sw, sh = Camera.ViewportSize.X, Camera.ViewportSize.Y
-    local dw, dh = sw * 0.4, sh * 0.4
-    local ox, oy = (sw - dw)/2, (sh - dh)/2
-    for y = 0, h, grid do
-        for x = 0, w, grid do
-            table.insert(pts, {ox + (x/w)*dw - sw/2, oy + (y/h)*dh - sh/2})
+            task.wait(0.1)
         end
     end
-    if #pts > 0 then startAutoDraw(pts, 0.003) end
-end
+end)()
 
-local function showUrlPopup(title, placeholder, callback)
-    local gui = Instance.new("ScreenGui")
-    gui.Parent = player.PlayerGui
-    gui.ResetOnSpawn = false
-    gui.DisplayOrder = 100
-    local f = Instance.new("Frame")
-    f.Size = UDim2.new(0, 400, 0, 200)
-    f.Position = UDim2.new(0.5, -200, 0.5, -100)
-    f.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    f.BorderSizePixel = 0
-    f.Parent = gui
-    Instance.new("UICorner", f).CornerRadius = UDim.new(0, 8)
-    
-    local t = Instance.new("TextLabel")
-    t.Size = UDim2.new(1, 0, 0, 30)
-    t.Position = UDim2.new(0, 0, 0, 10)
-    t.Text = title
-    t.TextColor3 = Color3.new(1, 1, 1)
-    t.BackgroundTransparency = 1
-    t.Font = Enum.Font.GothamBold
-    t.TextSize = 16
-    t.Parent = f
-    
-    local box = Instance.new("TextBox")
-    box.Size = UDim2.new(0.9, 0, 0, 40)
-    box.Position = UDim2.new(0.05, 0, 0, 60)
-    box.PlaceholderText = placeholder or ""
-    box.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    box.TextColor3 = Color3.new(1, 1, 1)
-    box.Font = Enum.Font.Gotham
-    box.TextSize = 14
-    box.BorderSizePixel = 0
-    box.Parent = f
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 4)
-    
-    local apply = Instance.new("TextButton")
-    apply.Size = UDim2.new(0.4, 0, 0, 40)
-    apply.Position = UDim2.new(0.05, 0, 0, 120)
-    apply.Text = "Apply"
-    apply.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    apply.TextColor3 = Color3.new(1, 1, 1)
-    apply.Font = Enum.Font.GothamBold
-    apply.TextSize = 16
-    apply.BorderSizePixel = 0
-    apply.Parent = f
-    Instance.new("UICorner", apply).CornerRadius = UDim.new(0, 6)
-    apply.MouseButton1Click:Connect(function() callback(box.Text) gui:Destroy() end)
-    
-    local cancel = Instance.new("TextButton")
-    cancel.Size = UDim2.new(0.4, 0, 0, 40)
-    cancel.Position = UDim2.new(0.55, 0, 0, 120)
-    cancel.Text = "Cancel"
-    cancel.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    cancel.TextColor3 = Color3.new(1, 1, 1)
-    cancel.Font = Enum.Font.GothamBold
-    cancel.TextSize = 16
-    cancel.BorderSizePixel = 0
-    cancel.Parent = f
-    Instance.new("UICorner", cancel).CornerRadius = UDim.new(0, 6)
-    cancel.MouseButton1Click:Connect(function() gui:Destroy() end)
-end
+-- ============================================================
+--  AUTO PICKER (Teleport method – no movement lock)
+-- ============================================================
+getgenv().pickerBusy = false
+
+coroutine.wrap(function()
+    while task.wait(0.2) do
+        if not getgenv().autoPickerEnabled then continue end
+        if getgenv().pickerBusy then continue end
+        getgenv().pickerBusy = true
+
+        pcall(function()
+            local char = player.Character
+            if not char then return end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+
+            for _, item in ipairs(Workspace:GetDescendants()) do
+                if not getgenv().autoPickerEnabled then break end
+                if item:IsA("Tool") and item.Parent ~= player.Backpack and item.Parent ~= char then
+                    local handle = item:FindFirstChild("Handle") or item:FindFirstChildWhichIsA("BasePart")
+                    if handle then
+                        local dist = (root.Position - handle.Position).Magnitude
+                        if dist <= getgenv().pickerRange then
+                            local oldPos = root.CFrame
+                            local target = handle.CFrame * CFrame.new(0, 2, 0)
+                            local tween = TweenService:Create(root, TweenInfo.new(0.1, Enum.EasingStyle.Linear), {CFrame = target})
+                            tween:Play()
+                            tween.Completed:Wait()
+                            task.wait(0.15)
+                            local backTween = TweenService:Create(root, TweenInfo.new(0.1, Enum.EasingStyle.Linear), {CFrame = oldPos})
+                            backTween:Play()
+                            task.wait(0.2)
+                        end
+                    end
+                end
+            end
+        end)
+
+        getgenv().pickerBusy = false
+    end
+end)()
+
+-- ============================================================
+--  AUTO HARVEST (swings tool – free movement)
+-- ============================================================
+coroutine.wrap(function()
+    while task.wait(0.001) do
+        if not getgenv().autoHarvestEnabled then
+            task.wait(0.1)
+            continue
+        end
+
+        pcall(function()
+            local char = player.Character
+            if not char then return end
+            local tool = char:FindFirstChildOfClass("Tool")
+            if not tool then return end
+
+            tool:Activate()
+            task.wait(math.random(50, 150) / 1000)
+            -- Some games need deactivation, uncomment if needed:
+            -- pcall(function() tool:Deactivate() end)
+            task.wait(getgenv().harvestSpeed / 1000)
+        end)
+    end
+end)()
 
 -- ============================================================
 --  TABS
 -- ============================================================
 local Tab1 = Window:Tab({ Title = "Main", Icon = "home" })
-Tab1:Section({ Title = "Credits" })
-Tab1:Button({ Title = "Reworked by Nothing", Callback = function() WindUI:Notify({Title="Credits", Content="Reworked by Nothing", Duration=3}) end })
-Tab1:Button({ Title = "Original by .ftgs", Callback = function() WindUI:Notify({Title="Credits", Content="Original by .ftgs", Duration=3}) end })
+-- (empty)
 
 local Tab2 = Window:Tab({ Title = "Player", Icon = "user" })
-Tab2:Section({ Title = "Movement" })
-Tab2:Button({ Title = "Speed: 50", Callback = function() local c = player.Character; if c and c.Humanoid then c.Humanoid.WalkSpeed = 50 end end })
-Tab2:Button({ Title = "Speed: 100", Callback = function() local c = player.Character; if c and c.Humanoid then c.Humanoid.WalkSpeed = 100 end end })
-Tab2:Button({ Title = "Speed: 200", Callback = function() local c = player.Character; if c and c.Humanoid then c.Humanoid.WalkSpeed = 200 end end })
-Tab2:Button({ Title = "Jump: 100", Callback = function() local c = player.Character; if c and c.Humanoid then c.Humanoid.JumpPower = 100 end end })
-Tab2:Button({ Title = "Jump: 200", Callback = function() local c = player.Character; if c and c.Humanoid then c.Humanoid.JumpPower = 200 end end })
-Tab2:Button({ Title = "Reset", Callback = function() local c = player.Character; if c and c.Humanoid then c.Humanoid.WalkSpeed = 16; c.Humanoid.JumpPower = 50 end end })
-Tab2:Section({ Title = "Character" })
-Tab2:Button({ Title = "Sit", Callback = function() local c = player.Character; if c and c.Humanoid then c.Humanoid.Sit = true end end })
-Tab2:Button({ Title = "Stand", Callback = function() local c = player.Character; if c and c.Humanoid then c.Humanoid.Sit = false end end })
+-- (empty)
 
-local Tab3 = Window:Tab({ Title = "Spray Paint", Icon = "paint-bucket" })
-Tab3:Section({ Title = "Controls" })
-Tab3:Toggle({ Title = "Enable Spray Paint", Default = false, Callback = function(v) sprayEnabled = v; if v then startSpray() else stopSpray() end end })
-Tab3:Section({ Title = "Overlay" })
-Tab3:Button({ Title = "Load Image Overlay", Callback = function() showUrlPopup("Paste Image URL", "https://...", function(url) if url ~= "" then createImageOverlay(url) end end) end })
-Tab3:Button({ Title = "Remove Overlay", Callback = removeImageOverlay })
-Tab3:Section({ Title = "Colors (64)" })
-for _, c in ipairs(colors) do
-    Tab3:Button({ Title = c.Name, Callback = function() drawColor = c.Color end })
-end
+-- Auto Pickup Tab (E‑spam)
+local TabPickup = Window:Tab({ Title = "Auto Pickup", Icon = "keyboard" })
+TabPickup:Section({ Title = "E‑Spam (Keyboard required)" })
+TabPickup:Toggle({
+    Title = "Enable Auto Pickup",
+    Desc = "Repeatedly press the chosen key (needs physical keyboard)",
+    Default = false,
+    Callback = function(value) getgenv().autoPickupEnabled = value end
+})
+TabPickup:Dropdown({
+    Title = "Key to press",
+    Desc = "Select interaction key",
+    Default = "E",
+    Options = {"E", "F", "R", "T", "Q", "Z"},
+    Callback = function(value)
+        local keyMap = {
+            E = Enum.KeyCode.E,
+            F = Enum.KeyCode.F,
+            R = Enum.KeyCode.R,
+            T = Enum.KeyCode.T,
+            Q = Enum.KeyCode.Q,
+            Z = Enum.KeyCode.Z
+        }
+        getgenv().pickupKey = keyMap[value] or Enum.KeyCode.E
+    end
+})
+TabPickup:Slider({
+    Title = "Delay (ms)",
+    Desc = "Time between key presses",
+    Min = 50,
+    Max = 500,
+    Default = 100,
+    Callback = function(value) getgenv().pickupDelay = value end
+})
 
-local Tab4 = Window:Tab({ Title = "Auto Drawer", Icon = "pencil" })
-Tab4:Section({ Title = "Preset Shapes" })
-for name, pts in pairs(presets) do
-    Tab4:Button({ Title = name, Callback = function() startAutoDraw(pts, 0.02) end })
-end
-Tab4:Button({ Title = "Stop Drawing", Callback = stopAutoDraw })
-Tab4:Section({ Title = "Image Trace" })
-Tab4:Button({ Title = "Trace Image URL", Callback = function() showUrlPopup("Paste Image URL", "https://...", function(url) if url ~= "" then traceImageFromUrl(url) end end) end })
+-- Auto Picker Tab (Teleport – mobile friendly)
+local TabPicker = Window:Tab({ Title = "Auto Picker", Icon = "archive" })
+TabPicker:Section({ Title = "Collect Ground Items" })
+TabPicker:Toggle({
+    Title = "Enable Auto Picker",
+    Desc = "Quick teleport to items – works on mobile & PC",
+    Default = false,
+    Callback = function(value) getgenv().autoPickerEnabled = value end
+})
+TabPicker:Slider({
+    Title = "Collect Range (studs)",
+    Desc = "Max distance to pick up",
+    Min = 5,
+    Max = 200,
+    Default = 50,
+    Callback = function(value) getgenv().pickerRange = value end
+})
 
-local Tab5 = Window:Tab({ Title = "Backgrounds", Icon = "image" })
-Tab5:Section({ Title = "Presets" })
-Tab5:Button({ Title = "Purple Galaxy", Callback = function() ChangeBackground("https://wallpapercave.com/wp/wp2757874.jpg"); WindUI:Notify({Title="BG", Content="Changed!", Duration=2}) end })
-Tab5:Button({ Title = "Blue Abstract", Callback = function() ChangeBackground("https://wallpapercave.com/wp/wp2757868.jpg"); WindUI:Notify({Title="BG", Content="Changed!", Duration=2}) end })
-Tab5:Button({ Title = "Red Neon", Callback = function() ChangeBackground("https://wallpapercave.com/wp/wp2757880.jpg"); WindUI:Notify({Title="BG", Content="Changed!", Duration=2}) end })
-Tab5:Button({ Title = "Green Forest", Callback = function() ChangeBackground("https://wallpapercave.com/wp/wp2757891.jpg"); WindUI:Notify({Title="BG", Content="Changed!", Duration=2}) end })
-Tab5:Button({ Title = "Dark Gradient", Callback = function() ChangeBackground("https://wallpapercave.com/wp/wp2757872.jpg"); WindUI:Notify({Title="BG", Content="Changed!", Duration=2}) end })
-Tab5:Button({ Title = "Reset Default", Callback = function() ChangeBackground(DEFAULT_BG); WindUI:Notify({Title="BG", Content="Reset!", Duration=2}) end })
+-- Auto Harvest Tab
+local TabHarvest = Window:Tab({ Title = "Auto Harvest", Icon = "tree" })
+TabHarvest:Section({ Title = "Swing Tool (Free Movement)" })
+TabHarvest:Toggle({
+    Title = "Enable Auto Harvest",
+    Desc = "Keep swinging equipped tool – works on mobile & PC",
+    Default = false,
+    Callback = function(value) getgenv().autoHarvestEnabled = value end
+})
+TabHarvest:Slider({
+    Title = "Swing Speed (ms)",
+    Desc = "Time between swings",
+    Min = 50,
+    Max = 500,
+    Default = 200,
+    Callback = function(value) getgenv().harvestSpeed = value end
+})
 
-local Tab6 = Window:Tab({ Title = "Settings", Icon = "cog" })
-Tab6:Button({ Title = "Rejoin Game", Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId, player) end })
-Tab6:Button({ Title = "Destroy UI", Callback = function()
-    stopSpray()
-    stopAutoDraw()
-    removeImageOverlay()
-    Window:Destroy()
-end })
+-- Backgrounds Tab
+local TabBg = Window:Tab({ Title = "Backgrounds", Icon = "image" })
+-- (empty)
 
-WindUI:Notify({ Title = "Advanced Hub", Content = "Reworked by Nothing - Fully loaded!", Duration = 5 })
+-- Settings Tab
+local TabSettings = Window:Tab({ Title = "Settings", Icon = "cog" })
+TabSettings:Button({
+    Title = "Destroy UI",
+    Desc = "Turn everything off and close",
+    Callback = function()
+        getgenv().autoPickupEnabled = false
+        getgenv().autoPickerEnabled = false
+        getgenv().autoHarvestEnabled = false
+        Window:Destroy()
+    end
+})
+
+-- ============================================================
+--  STARTUP NOTIFICATION
+-- ============================================================
+WindUI:Notify({
+    Title = "Hub Ready",
+    Content = "Mobile friendly – use Auto Picker & Harvest without keyboard!",
+    Duration = 5
+})
