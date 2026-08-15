@@ -1,4 +1,4 @@
--- ============================================================                                                                                                             -- ============================================================
+-- ============================================================
 --  LOADING SCREEN
 -- ============================================================
 local Players = game:GetService("Players")
@@ -91,10 +91,31 @@ end)
 repeat task.wait(0.1) until loadingDone
 
 -- ============================================================
---  LOAD WINDUI
+--  LOAD WINDUI (with error handling)
 -- ============================================================
-local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
-if not WindUI then return end
+local WindUI = nil
+local success, result = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+end)
+
+if success and type(result) == "table" then
+    WindUI = result
+else
+    warn("Failed to load WindUI library. Check your internet or the URL.")
+    -- Optional: show a simple notification that the UI failed to load
+    local failGui = Instance.new("ScreenGui")
+    failGui.Parent = player:WaitForChild("PlayerGui")
+    local failLabel = Instance.new("TextLabel")
+    failLabel.Size = UDim2.new(0, 300, 0, 50)
+    failLabel.Position = UDim2.new(0.5, -150, 0.5, -25)
+    failLabel.Text = "Failed to load UI library. Check console."
+    failLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    failLabel.BackgroundTransparency = 1
+    failLabel.Font = Enum.Font.GothamBold
+    failLabel.TextSize = 16
+    failLabel.Parent = failGui
+    return
+end
 
 local DEFAULT_BG = "https://imgs.search.brave.com/PDlgPLyWgsl2LX1wyUldvBClHpq7m892iXzcEE9AELc/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly9pLnBp/bmltZy5jb20vb3Jp/Z2luYWxzL2E3LzRj/L2M5L2E3NGNjOTM1/MTAyMWNiNzg2NGI0/NTg4MzE0YTU1MjM5/LmpwZw"
 local LOGO_URL = "https://imgs.search.brave.com/gMMHjl8dlOO2h8L87rQrtupd4vcbZ2A22jtoJ5ajOHw/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jZG4u/cGZwcy5nZy9wZnBzLzU3MDQta29taS5w/bmc"
